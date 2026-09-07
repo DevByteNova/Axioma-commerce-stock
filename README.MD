@@ -55,5 +55,3 @@ Desarrollado como proyecto académico.
 ## 🧪 Credenciales de prueba
 
 - Usuario cliente: `santiago.girald` / `clientes2026` (ejemplo usado en pruebas).
-
-Si necesitas que documente más detalles del esquema de base de datos, endpoints JSON u otros flujos (registro, ventas por vendedor, informes), dímelo y lo añado al README.
