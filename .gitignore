@@ -1,0 +1,16 @@
+# --- Ignorar archivos de VS Code ---
+.vscode/
+
+# --- Ignorar archivos de sistema ---
+.DS_Store
+Thumbs.db
+
+# --- Ignorar archivos de XAMPP / Servidor Local ---
+
+*.log
+*.tmp
+# Ignorar carpetas de configuración del IDE que no sirven en otros equipos
+nbproject/
+
+# Ignorar carpeta de herramientas/temporales creada por el equipo
+tools/
