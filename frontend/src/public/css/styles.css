@@ -373,6 +373,59 @@ td a:hover {
     text-decoration: underline;
 }
 
+<<<<<<< HEAD
+=======
+.client-register-card {
+    max-width: 540px;
+}
+
+.auth-subtitle {
+    margin: -10px 0 18px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.registration-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 1.5rem;
+}
+
+.registration-back-link {
+    width: 100%;
+    text-align: center;
+    border: 1px solid var(--border);
+    background: var(--paper);
+    color: var(--ink);
+    padding: 0.8rem 1rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.registration-back-link:hover {
+    background: var(--secondary-tint);
+    border-color: var(--secondary-color);
+    text-decoration: none;
+}
+
+.form-message {
+    display: none;
+    margin-top: 1rem;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.form-message.show {
+    display: block;
+}
+
+>>>>>>> 079dd30 (Add favicon images and implement index.php for session management and routing)
 /* --- Dashboard --- */
 .dashboard-body {
     background-color: var(--paper);

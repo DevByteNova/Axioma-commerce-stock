@@ -1,7 +1,9 @@
 <?php
-session_start();
-if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'Administrador') {
-    header('Location: index.php?url=login');
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (!isset($_SESSION['usuario_rol']) || !in_array($_SESSION['usuario_rol'], ['Administrador', 'Vendedor'], true)) {
+    header("Location: index.php?url=login");
     exit;
 }
 ?>
