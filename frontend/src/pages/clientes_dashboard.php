@@ -28,11 +28,12 @@ $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
 <head>
     <meta charset="UTF-8">
     <title>Mi Panel - Tienda Axioma</title>
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <?php require_once __DIR__ . '/../components/header.php'; ?>
+    <?php require_once __DIR__ . '/../../../backend/src/controllers/header.php'; ?>
     <div class="container py-5 client-dashboard-container">
         <h2 class="fw-bold text-dark mb-4">Bienvenido, <?php echo htmlspecialchars($nombre_cliente); ?> 🛒</h2>
 

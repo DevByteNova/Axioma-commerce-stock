@@ -10,10 +10,11 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'Administra
 <head>
     <meta charset="UTF-8">
     <title>Axioma | Gestión de Usuarios</title>
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
 </head>
 <body>
-<?php require_once __DIR__ . '/../components/header.php'; ?>
+<?php require_once __DIR__ . '/../../../backend/src/controllers/header.php'; ?>
 
 <div class="container">
     <div class="header-actions">

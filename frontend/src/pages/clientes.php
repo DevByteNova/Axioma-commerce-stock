@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['usuario_rol']) || !in_array($_SESSION['usuario_rol'], ['Administrador', 'Vendedor'], true)) {
     header("Location: index.php?url=login");
     exit;
@@ -14,11 +16,12 @@ $db = $database->getConnection();
 <head>
     <meta charset="UTF-8">
     <title>Clientes - Axioma</title>
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
 </head>
 <body>
 
-<?php require_once 'frontend/src/components/header.php'; ?>
+<?php require_once __DIR__ . '/../../../backend/src/controllers/header.php'; ?>
 <div class="container">
     <?php if (session_status() === PHP_SESSION_NONE) { session_start(); } ?>
     <?php if (!empty($_SESSION['flash_success'])): ?>

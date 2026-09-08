@@ -41,11 +41,12 @@ $factura = $resultado->fetch_assoc();
 <head>
     <meta charset="UTF-8">
     <title>Factura #<?php echo $id_factura; ?></title>
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../public/css/styles.css">
 </head>
 <body>
 
-<?php require_once __DIR__ . '/../components/header.php'; ?>
+<?php require_once __DIR__ . '/../../../backend/src/controllers/header.php'; ?>
 
 <div class="invoice-box">
     <?php if ($factura): ?>

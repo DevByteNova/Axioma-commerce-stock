@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Axioma | Registro de Cliente</title>
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>

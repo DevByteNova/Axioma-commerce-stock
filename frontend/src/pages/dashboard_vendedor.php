@@ -16,12 +16,13 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Vendedor - Axioma</title>
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <!-- Incluyendo Bootstrap CSS para que los formularios y botones luzcan profesionales -->
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <?php require_once __DIR__ . '/../components/header.php'; ?>
+    <?php require_once __DIR__ . '/../../../backend/src/controllers/header.php'; ?>
     <div class="container seller-dashboard-container">
         <?php if (isset($_GET['exito']) && $_GET['exito'] === 'venta_ok'): ?>
             <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
