@@ -14,3 +14,7 @@ nbproject/
 
 # Ignorar carpeta de herramientas/temporales creada por el equipo
 tools/
+
+#Variables de entorno
+.env
+/vendor/

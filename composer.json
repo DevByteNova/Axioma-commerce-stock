@@ -1,0 +1,13 @@
+{
+    "name": "santiago/axioma-commerce-stock",
+    "description": "placeholder",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Santiago",
+            "email": "bytenovax@gmail.com"
+        }
+    ],
+    "require": {}
+}
