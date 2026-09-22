@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
     "name": "santiago/axioma-commerce-stock",
     "description": "placeholder",
     "type": "project",
@@ -10,4 +11,9 @@
         }
     ],
     "require": {}
+=======
+    "require": {
+        "dompdf/dompdf": "*"
+    }
+>>>>>>> 127d3bb (Implement sales registration and order processing modules; update .gitignore and TODOs; add composer files for dependency management)
 }

@@ -319,7 +319,156 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'registrar_venta') {
     }
 }
 
+// ==========================================
+// MÓDULO 7: REGISTRO DE VENTA (TRANSACCIÓN)
+// ==========================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['action'] === 'registrar_venta') {
+    
+    if (!isset($_SESSION['usuario_rol']) || ($_SESSION['usuario_rol'] !== 'Vendedor' && $_SESSION['usuario_rol'] !== 'Administrador')) {
+        echo json_encode(["success" => false, "message" => "No autorizado."]);
+        exit;
+    }
 
+    $id_producto = intval($data['id_producto'] ?? 0);
+    $cantidad = intval($data['cantidad'] ?? 0);
+    $id_vendedor = $_SESSION['id_vendedor'] ?? ($_SESSION['usuario_id'] ?? 0);
+
+    if ($id_producto <= 0 || $cantidad <= 0) {
+        echo json_encode(["success" => false, "message" => "Datos de venta inválidos."]);
+        exit;
+    }
+
+    $database = new Database();
+    $db = $database->getConnection();
+
+    try {
+        $db->beginTransaction();
+
+        // Verificar stock y precio
+        $stmt = $db->prepare("SELECT PRECIO, STOCK FROM productos WHERE ID_PRODUCTO = ?");
+        $stmt->execute([$id_producto]);
+        $producto = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$producto) {
+            echo json_encode(["success" => false, "message" => "El producto no existe."]);
+            exit;
+        }
+
+        if (intval($producto['STOCK']) < $cantidad) {
+            echo json_encode(["success" => false, "message" => "Stock insuficiente."]);
+            exit;
+        }
+
+        $total_venta = floatval($producto['PRECIO']) * $cantidad;
+
+        // Registrar venta
+        $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, cantidad, total, FECHA_VENTA) VALUES (?, ?, ?, ?, NOW())";
+        $stmtVenta = $db->prepare($sqlVenta);
+        $stmtVenta->execute([$id_producto, $id_vendedor, $cantidad, $total_venta]);
+
+        // Descontar stock
+        $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
+        $stmtStock = $db->prepare($sqlStock);
+        $stmtStock->execute([$cantidad, $id_producto]);
+
+        $db->commit();
+        echo json_encode(["success" => true, "message" => "Venta registrada exitosamente."]);
+
+    } catch (Exception $e) {
+        if ($db && $db->inTransaction()) $db->rollBack();
+        echo json_encode(["success" => false, "message" => "Error en la transacción: " . $e->getMessage()]);
+    }
+    exit;
+}
+// ==========================================
+// MÓDULO: PROCESAR PEDIDO Y TRANSACCIÓN SEGURA
+// ==========================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['action'] === 'procesar_pedido') {
+    
+    // Verificar que el usuario sea Cliente autenticado
+    if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'Cliente') {
+        echo json_encode(["success" => false, "message" => "Acción no autorizada."]);
+        exit;
+    }
+
+    $items = $data['items'] ?? [];
+    $metodo_pago = trim($data['metodo_pago'] ?? 'Efectivo');
+    $id_cliente = $_SESSION['id_cliente'] ?? null;
+
+    if (empty($items) || !$id_cliente) {
+        echo json_encode(["success" => false, "message" => "Datos de compra incompletos o sesión de cliente inválida."]);
+        exit;
+    }
+
+    $database = new Database();
+    $db = $database->getConnection();
+
+    try {
+        // 1. Iniciar transacción estricta
+        $db->beginTransaction();
+        $total_general = 0;
+        $detalles_validados = [];
+
+        foreach ($items as $item) {
+            $id_prod = intval($item['id']);
+            $cant = intval($item['cantidad']);
+
+            if ($cant <= 0) continue;
+
+            // 2. Consultar precio y stock real bloqueando la fila para evitar concurrencia (Race Condition)
+            $stmtProd = $db->prepare("SELECT PRECIO, STOCK, DESCRIPCION FROM productos WHERE ID_PRODUCTO = ? FOR UPDATE");
+            $stmtProd->execute([$id_prod]);
+            $prodInfo = $stmtProd->fetch(PDO::FETCH_ASSOC);
+
+            if (!$prodInfo) {
+                throw new Exception("El producto con ID $id_prod no existe.");
+            }
+
+            if (intval($prodInfo['STOCK']) < $cant) {
+                throw new Exception("Stock insuficiente para el producto: " . $prodInfo['DESCRIPCION']);
+            }
+
+            $precio_unitario = floatval($prodInfo['PRECIO']);
+            $subtotal = $precio_unitario * $cant;
+            $total_general += $subtotal;
+
+            $detalles_validados[] = [
+                'id_producto' => $id_prod,
+                'cantidad' => $cant,
+                'precio_unitario' => $precio_unitario,
+                'subtotal' => $subtotal
+            ];
+        }
+
+        // 3. Insertar el pedido principal en la tabla `pedido` o `ventas`
+        $sqlPedido = "INSERT INTO pedido (ID_CLIENTE, TOTAL, METODO_PAGO, ESTADO, FECHA) VALUES (?, ?, ?, 'Completado', NOW())";
+        $stmtPed = $db->prepare($sqlPedido);
+        $stmtPed->execute([$id_cliente, $total_general]);
+        $id_pedido = $db->lastInsertId();
+
+        // 4. Insertar detalles e ir descontando el inventario de forma segura
+        foreach ($detalles_validados as $det) {
+            $sqlDetalle = "INSERT INTO detalle_pedido (ID_PEDIDO, ID_PRODUCTO, CANTIDAD, PRECIO_UNITARIO, SUBTOTAL) VALUES (?, ?, ?, ?, ?)";
+            $stmtDet = $db->prepare($sqlDetalle);
+            $stmtDet.execute([$id_pedido, $det['id_producto'], $det['cantidad'], $det['precio_unitario'], $det['subtotal']]);
+
+            $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
+            $stmtStock = $db->prepare($sqlStock);
+            $stmtStock.execute([$det['cantidad'], $det['id_producto']]);
+        }
+
+        // Todo correcto, confirmamos cambios en la base de datos
+        $db->commit();
+        echo json_encode(["success" => true, "id_pedido" => $id_pedido, "message" => "Compra procesada exitosamente."]);
+
+    } catch (Exception $e) {
+        if ($db && $db->inTransaction()) {
+            $db->rollBack();
+        }
+        echo json_encode(["success" => false, "message" => "Error en la transacción: " . $e->getMessage()]);
+    }
+    exit;
+}
 // Si la acción no coincide con ninguna anterior
 echo json_encode(["success" => false, "message" => "Acción no válida."]);
 ?>

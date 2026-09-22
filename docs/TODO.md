@@ -1,9 +1,9 @@
 # Lista de Tareas Pendientes (TODOs) - Sistema Pijamas Harv
 
-## 1. Módulo de Autenticación y Seguridad
-- [ ] Programar la lógica de inicio de sesión (`login.php`) validando contraseñas cifradas.
-- [ ] Configurar el control de sesiones por roles (Administrador, Vendedor, Cliente).
-- [ ] Proteger las rutas privadas para evitar accesos directos por URL.
+## 1. Módulo de Autenticación y Seguridad - Terminado ✔
+- [X] Programar la lógica de inicio de sesión (`login.php`) validando contraseñas cifradas.
+- [X] Configurar el control de sesiones por roles (Administrador, Vendedor, Cliente).
+- [X] Proteger las rutas privadas para evitar accesos directos por URL.
 
 ## 2. Módulo de Transacciones y Compras
 - [ ] Desarrollar el carrito de compras dinámico (JavaScript / PHP).
