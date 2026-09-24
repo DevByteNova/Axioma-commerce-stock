@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 27-08-2026 a las 23:33:43
+-- Tiempo de generación: 24-09-2026 a las 23:10:19
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -101,7 +101,10 @@ INSERT INTO `facturas` (`ID_FACTURA`, `FECHA`, `ID_CLIENTE`) VALUES
 (18, '2026-08-24', 18),
 (19, '2026-08-25', 19),
 (20, '2026-08-27', 20),
-(21, '2026-08-27', 21);
+(21, '2026-08-27', 21),
+(22, '2026-09-24', 21),
+(23, '2026-09-24', 21),
+(24, '2026-09-24', 21);
 
 -- --------------------------------------------------------
 
@@ -120,26 +123,8 @@ CREATE TABLE `metodos_pago` (
 --
 
 INSERT INTO `metodos_pago` (`ID_PAGO`, `nombre_metodo`, `estado`) VALUES
-(1, 'Efectivo', 1),
-(2, 'Tarjeta Crédito', 1),
-(3, 'Tarjeta Débito', 1),
-(4, 'Transferencia Bancaria', 1),
-(5, 'Nequi', 1),
-(6, 'Daviplata', 1),
-(7, 'PSE', 1),
-(8, 'PayPal', 1),
-(9, 'Pago Contra Entrega', 1),
-(10, 'Criptomonedas', 1),
-(11, 'Bono Regalo', 1),
-(12, 'Crédito Directo', 1),
-(13, 'Apple Pay', 1),
-(14, 'Google Pay', 1),
-(15, 'Zelle', 1),
-(16, 'Wompi', 1),
-(17, 'MercadoPago', 1),
-(18, 'PayU', 1),
-(19, 'Giros Postales', 1),
-(20, 'Cheque', 1);
+(1, 'Tarjeta de Crédito / Débito', 1),
+(2, 'PSE (Pago Seguro en Línea)', 1);
 
 -- --------------------------------------------------------
 
@@ -176,11 +161,11 @@ INSERT INTO `productos` (`ID_PRODUCTO`, `nombre`, `DESCRIPCION`, `PRECIO`, `STOC
 (13, 'Pijama Infantil Dinosaurios', 'Diseño divertido para niños', 30000.00, 18, 'S'),
 (14, 'Pijama Dúo Pareja King & Queen', 'Pijama combinada para parejas', 95000.00, 7, 'XL'),
 (15, 'Pijama Navideña Reno', 'Motivo especial de temporada navideña', 52000.00, 15, 'M'),
-(16, 'Pijama Estampada Gatos', 'Diseño tierno con estampado de gatos', 36000.00, 20, 'S'),
+(16, 'Pijama Estampada Gatos', 'Diseño tierno con estampado de gatos', 36000.00, 19, 'S'),
 (17, 'Pijama Lisa Minimalista', 'Diseño liso de corte sencillo', 34000.00, 25, 'M'),
-(18, 'Pijama Oversize Comfort', 'Corte amplio y holgado para máxima comodidad', 46000.00, 12, 'L'),
-(19, 'Pijama Deluxe Encaje', 'Acabados finos con detalles de encaje', 70000.00, 6, 'S'),
-(20, 'Pijama Básica Algodón Grey', 'Básica de uso diario en algodón', 28000.00, 40, 'M');
+(18, 'Pijama Oversize Comfort', 'Corte amplio y holgado para máxima comodidad', 46000.00, 11, 'L'),
+(19, 'Pijama Deluxe Encaje', 'Acabados finos con detalles de encaje', 70000.00, 5, 'S'),
+(20, 'Pijama Básica Algodón Grey', 'Básica de uso diario en algodón', 28000.00, 39, 'M');
 
 -- --------------------------------------------------------
 
@@ -319,7 +304,11 @@ INSERT INTO `ventas` (`ID_VENTAS`, `ID_PRODUCTO`, `cantidad`, `total`, `FECHA_VE
 (18, 18, 1, 46000.00, '2026-08-24 20:42:53', 18, 18, 8),
 (19, 19, 1, 70000.00, '2026-08-25 20:42:53', 19, 19, 9),
 (20, 20, 4, 112000.00, '2026-08-27 20:42:53', 20, 20, 10),
-(21, 1, 2, 75000.00, '2026-08-27 21:02:43', 1, 21, 1);
+(21, 1, 2, 75000.00, '2026-08-27 21:02:43', 1, 21, 1),
+(22, 19, 1, 70000.00, '2026-09-25 01:41:23', 1, 21, 3),
+(23, 16, 1, 36000.00, '2026-09-25 02:08:02', 1, 21, 1),
+(24, 18, 1, 46000.00, '2026-09-25 02:08:02', 1, 21, 1),
+(25, 20, 1, 28000.00, '2026-09-25 03:46:47', 1, 21, 1);
 
 --
 -- Índices para tablas volcadas
@@ -388,13 +377,13 @@ ALTER TABLE `clientes`
 -- AUTO_INCREMENT de la tabla `facturas`
 --
 ALTER TABLE `facturas`
-  MODIFY `ID_FACTURA` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `ID_FACTURA` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT de la tabla `metodos_pago`
 --
 ALTER TABLE `metodos_pago`
-  MODIFY `ID_PAGO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `ID_PAGO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `productos`
@@ -418,7 +407,7 @@ ALTER TABLE `vendedor`
 -- AUTO_INCREMENT de la tabla `ventas`
 --
 ALTER TABLE `ventas`
-  MODIFY `ID_VENTAS` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `ID_VENTAS` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- Restricciones para tablas volcadas
