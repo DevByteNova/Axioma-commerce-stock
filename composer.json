@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
     "name": "santiago/axioma-commerce-stock",
     "description": "placeholder",
     "type": "project",
@@ -10,10 +9,7 @@
             "email": "bytenovax@gmail.com"
         }
     ],
-    "require": {}
-=======
     "require": {
-        "dompdf/dompdf": "*"
+        "dompdf/dompdf": "^3.1"
     }
->>>>>>> 127d3bb (Implement sales registration and order processing modules; update .gitignore and TODOs; add composer files for dependency management)
 }

@@ -95,6 +95,9 @@ $factura = $resultado->fetch_assoc();
         </div>
 
         <button class="print-btn" onclick="window.print()">Imprimir / Guardar Factura</button>
+        <a href="generar_factura.php?id=<?php echo (int) $factura['ID_FACTURA']; ?>" target="_blank" class="btn">
+            Descargar Factura
+        </a>
     <?php else: ?>
         <p class="invoice-error">No se encontró la factura solicitada.</p>
     <?php endif; ?>

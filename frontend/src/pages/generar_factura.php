@@ -1,101 +1,98 @@
 <?php
-session_start();
-require_once __DIR__ . '/config/db.php';
-// Asegúrate de incluir tu autoload de Composer si usas Dompdf
-// require_once __DIR__ . '/vendor/autoload.php'; 
-// use Dompdf\Dompdf;
+require_once __DIR__ . '/../../../vendor/autoload.php';
+require_once __DIR__ . '/../../../backend/src/conexion.php';
 
-// 1. Validar autenticación
-if (!isset($_SESSION['usuario_rol'])) {
-    header("HTTP/1.1 403 Forbidden");
-    exit("Acceso denegado.");
+use Dompdf\Dompdf;
+
+$id_factura = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+if (!$id_factura) {
+    exit('Factura no válida.');
 }
 
-$id_pedido = intval($_GET['id'] ?? 0);
-$id_usuario_actual = $_SESSION['usuario_id'] ?? 0;
-$rol_actual = $_SESSION['usuario_rol'];
-$id_cliente_actual = $_SESSION['id_cliente'] ?? 0;
+$db = new Database();
+$pdo = $db->getConnection();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$database = new Database();
-$db = $database->getConnection();
-
-// 2. Consultar el pedido y verificar propiedad (Control de seguridad IDOR)
-$sql = "SELECT p.*, c.NOMBRE, c.APELLIDOS, c.email, c.DIRECCION 
-        FROM pedido p 
-        JOIN clientes c ON p.ID_CLIENTE = c.ID_CLIENTE 
-        WHERE p.ID_PEDIDO = ?";
-$stmt = $db->prepare($sql);
-$stmt->execute([$id_pedido]);
-$pedido = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$pedido) {
-    exit("Factura no encontrada.");
+$stmt = $pdo->prepare("SELECT f.ID_FACTURA, f.FECHA, CONCAT(c.NOMBRE, ' ', c.APELLIDOS) AS CLIENTE,
+                              p.nombre AS PRODUCTO, v.cantidad, p.PRECIO, v.total
+                       FROM facturas f
+                       INNER JOIN clientes c ON c.ID_CLIENTE = f.ID_CLIENTE
+                       INNER JOIN ventas v ON v.ID_CLIENTE = f.ID_CLIENTE
+                       INNER JOIN productos p ON p.ID_PRODUCTO = v.ID_PRODUCTO
+                       WHERE f.ID_FACTURA = ?");
+$stmt->execute([$id_factura]);
+$items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+if (!$items) {
+    exit('No se encontró la factura solicitada.');
 }
 
-// Blindaje de seguridad: Si es Cliente, solo puede ver SU propia factura
-if ($rol_actual === 'Cliente' && intval($pedido['ID_CLIENTE']) !== intval($id_cliente_actual)) {
-    header("HTTP/1.1 403 Forbidden");
-    exit("No tienes permisos para visualizar este documento.");
+$factura = $items[0];
+$total_factura = array_sum(array_column($items, 'total'));
+$filas = '';
+foreach ($items as $item) {
+    $filas .= '<tr><td>' . htmlspecialchars($item['PRODUCTO']) . '</td><td>' . (int) $item['cantidad'] . '</td><td>$' . number_format((float) $item['PRECIO'], 2) . '</td><td>$' . number_format((float) $item['total'], 2) . '</td></tr>';
 }
 
-// Consultar los productos del detalle de este pedido
-$sqlDetalles = "SELECT dp.*, pr.DESCRIPCION 
-                FROM detalle_pedido dp 
-                JOIN productos pr ON dp.ID_PRODUCTO = pr.ID_PRODUCTO 
-                WHERE dp.ID_PEDIDO = ?";
-$stmtDet = $db->prepare($sqlDetalles);
-$stmtDet->execute([$id_pedido]);
-$detalles = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
-
-// 3. Renderizar HTML para el PDF
-$html = '
-<style>
-    body { font-family: sans-serif; color: #333; }
-    .header { text-align: center; margin-bottom: 20px; }
-    .info { margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 14px; }
-    th { background-color: #f4f6f9; }
-    .total { text-align: right; font-weight: bold; margin-top: 15px; font-size: 16px; }
-</style>
-<div class="header">
-    <h2>Pijamas Harv - Factura de Venta</h2>
-    <p>Comprobante Oficial de Transacción</p>
-</div>
-<div class="info">
-    <strong>Factura N°:</strong> ' . $pedido['ID_PEDIDO'] . '<br>
-    <strong>Fecha:</strong> ' . $pedido['FECHA'] . '<br>
-    <strong>Cliente:</strong> ' . htmlspecialchars($pedido['NOMBRE'] . ' ' . $pedido['APELLIDOS']) . '<br>
-    <strong>Método de Pago:</strong> ' . htmlspecialchars($pedido['METODO_PAGO']) . '
-</div>
-<table>
-    <tr>
-        <th>Producto</th>
-        <th>Cantidad</th>
-        <th>Precio U.</th>
-        <th>Subtotal</th>
-    </tr>';
-
-foreach ($detalles as $det) {
-    $html .= '<tr>
-        <td>' . htmlspecialchars($det['DESCRIPCION']) . '</td>
-        <td>' . $det['CANTIDAD'] . '</td>
-        <td>$' . number_format($det['PRECIO_UNITARIO'], 2) . '</td>
-        <td>$' . number_format($det['SUBTOTAL'], 2) . '</td>
-    </tr>';
-}
-
-$html .= '</table>
-<div class="total">
-    Total Pagado: $' . number_format($pedido['TOTAL'], 2) . '
-</div>';
-
- 
 $dompdf = new Dompdf();
-$dompdf->loadHtml($html);
-$dompdf->setPaper('A4', 'portrait');
-$dompdf->render();
-$dompdf->stream("factura_" . $id_pedido . ".pdf", ["Attachment" => true]);
 
-// Salida temporal en HTML puro para pruebas si aún no instalas Dompdf:
-echo $html;
+$html = '<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; color: #333; margin: 0; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #2c3e50; margin: 0; font-size: 24px; }
+        .header p { color: #7f8c8d; font-size: 14px; margin: 5px 0; }
+        .info-table, .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .info-table td { padding: 5px; font-size: 14px; }
+        .items-table th { background-color: #34495e; color: white; padding: 10px; font-size: 14px; text-align: left; }
+        .items-table td { padding: 10px; border-bottom: 1px solid #dddddd; font-size: 13px; }
+        .total-section { text-align: right; font-size: 16px; font-weight: bold; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Pijamas Harv</h1>
+        <p>Comprobante de Factura Electrónica</p>
+        <p>Fecha: ' . htmlspecialchars($factura['FECHA']) . '</p>
+    </div>
+
+    <table class="info-table">
+        <tr>
+            <td><strong>Cliente:</strong> ' . htmlspecialchars($factura['CLIENTE']) . '</td>
+            <td><strong>Nro Factura:</strong> #' . (int) $factura['ID_FACTURA'] . '</td>
+        </tr>
+    </table>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio Unitario</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            ' . $filas . '
+        </tbody>
+    </table>
+
+    <div class="total-section">
+        Total a Pagar: $' . number_format($total_factura, 2) . ' COP
+    </div>
+
+</body>
+</html>
+';
+
+$dompdf->loadHtml($html);
+// Se configura el tamaño del papel y la orientación
+$dompdf->setPaper('A4', 'portrait');
+// Renderiza el HTML como PDF
+$dompdf->render();
+
+$dompdf->stream("factura_pijamas_harv.pdf", ["Attachment" => true]);
+?>

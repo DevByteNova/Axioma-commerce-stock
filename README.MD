@@ -1,34 +1,57 @@
-# Axioma - Panel de Control Administrativo
+# Axioma Commerce Stock
 
-Sistema de gestión desarrollado bajo una arquitectura modular que integra el frontend, backend y gestión de base de datos para el control de operaciones.
+Sistema web de comercio y gestión de inventario para la administración de productos, clientes, vendedores, carrito de compras, pagos y facturación.
 
 ## 🛠️ Tecnologías y Configuración
 * **Lenguaje:** PHP 8+
-* **Base de Datos:** MySQL gestionado mediante PDO
-* **Interfaz:** Tailwind CSS integrado para el diseño de vistas
-* **Arquitectura:** Estructura modular dividida en `frontend/` para las vistas y `backend/` para la lógica de conexión y consultas
+* **Base de datos:** MySQL/MariaDB mediante PDO
+* **Interfaz:** PHP, HTML, Bootstrap 5 y Font Awesome
+* **Facturación:** Dompdf para generar facturas en PDF
+* **Arquitectura:** `frontend/` contiene las vistas y `backend/` contiene la conexión, controladores y modelos
 
 ## 📁 Estructura del Proyecto
 
-Axioma/
-├── backend/          # Lógica de conexión y consultas
-├── frontend/         # Vistas e interfaz de usuario
-├── database/         # Respaldo de la base de datos (.sql)
-└── index.php         # Punto de entrada principal
+ Axioma-commerce-stock/
+├── backend/                 # Conexión, controladores y modelos
+├── frontend/                # Vistas, páginas y recursos públicos
+├── database/                # Respaldo de la base de datos
+├── docs/                    # Documentación pendiente
+├── index.php                # Router principal
+├── composer.json            # Dependencias PHP
+└── vendor/                  # Dependencias instaladas
 
 
 ## 🚀 Guía de Implementación
-1. **Base de Datos:** Importa el archivo `.sql` ubicado en `/database` a través de phpMyAdmin.
-2. **Conexión:** Configura tus credenciales (host, nombre de BD, usuario y clave) en el archivo `backend/src/conexion.php`.
-3. **Integración:** Asegúrate de que las rutas relativas o absolutas de `require_once` en tus archivos (`dashboard.php`, etc.) apunten correctamente a `backend/src/conexion.php`.
+1. Inicia **Apache** y **MySQL** desde XAMPP.
+2. Crea o importa la base de datos usando `database/axioma_bd.sql` desde phpMyAdmin.
+3. Revisa las credenciales en `backend/src/conexion.php`:
+	- Servidor: `localhost`
+	- Usuario: `root`
+	- Clave: vacía por defecto en XAMPP
+	- Base de datos: `Axioma_BD`
+4. Instala las dependencias si no existe `vendor/`:
+
+	```bash
+	composer install
+	```
+
+5. Abre el proyecto en el navegador:
+
+	```text
+	http://localhost/Axioma-commerce-stock-master/
+	```
+
+> El archivo SQL aparece como `axioma_bd`. En instalaciones Windows normalmente no hay diferencia entre mayúsculas y minúsculas, pero conviene usar el mismo nombre configurado en `conexion.php`.
 
 ## 🔒 Seguridad
-* Autenticación basada en sesiones PHP con acceso restringido para administradores.
-* Implementación de rutas absolutas para garantizar la correcta carga de dependencias en el entorno de desarrollo local.
+* Autenticación basada en sesiones PHP.
+* Rutas protegidas según el rol: `Cliente`, `Vendedor` y `Administrador`.
+* El checkout y las operaciones principales usan PDO y consultas preparadas.
+* No se almacenan números completos, CVV ni datos sensibles de tarjetas.
+* La validación de tarjeta incluida es local para pruebas; no reemplaza una pasarela bancaria real.
 
 ---
 *Desarrollado como proyecto académico.*
-Desarrollado como proyecto académico.
 
 ## 📝 Cambios recientes y notas de ejecución
 
@@ -48,10 +71,20 @@ Desarrollado como proyecto académico.
 
 ## 💳 Compras y facturación
 
-- Endpoint para procesar compras de cliente (POST): `index.php?url=procesar_compra_cliente`.
-- El flujo realiza validación de stock, inserta en `ventas` y actualiza `productos.STOCK` dentro de una transacción.
-- Se añadió una sección en el panel del cliente `frontend/src/pages/clientes_dashboard.php` para listar facturas (enlaza a `frontend/src/pages/ver_factura.php?id=...`).
+- El cliente agrega productos mediante `index.php?url=agregar_carrito`.
+- El carrito se consulta en `index.php?url=ver_carrito`.
+- El botón **Finalizar compra** abre `index.php?url=procesar_compra`.
+- El checkout carga los métodos activos de `metodos_pago` y permite seleccionar tarjeta o PSE.
+- Para tarjeta se solicitan titular, número de 16 dígitos, vencimiento y CVV.
+- Para PSE se solicita el banco seleccionado.
+- La compra crea una factura, registra las ventas, descuenta el inventario y vacía el carrito dentro de una transacción.
+- Después de comprar, el dashboard muestra la factura recién creada.
+- `frontend/src/pages/ver_factura.php?id=...` permite consultar la factura.
+- `frontend/src/pages/generar_factura.php?id=...` genera el PDF con Dompdf.
+
+> Actualmente `ventas` no tiene una columna `ID_FACTURA`; las facturas relacionan las ventas mediante el cliente. Para separar estrictamente los productos de cada factura, se debe agregar esa relación en la base de datos.
 
 ## 🧪 Credenciales de prueba
 
-- Usuario cliente: `santiago.girald` / `clientes2026` (ejemplo usado en pruebas).
+- Usa un usuario con rol `Cliente` creado en la base de datos para probar el flujo.
+- El SQL de ejemplo incluye usuarios de prueba, pero sus contraseñas dependen de los datos importados y de la lógica de autenticación vigente.

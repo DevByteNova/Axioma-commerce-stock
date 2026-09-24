@@ -1,96 +1,496 @@
 <?php
-// Parche integrado solicitado por el usuario, preservando fixes previos.
-// HACK: Esta es una solución rápida para que el dashboard de cliente funcione
-// correctamente en el código actual; debería refactorizarse a futuro.
-// Asegurar que la sesión está activa y validar permisos de cliente
+/**
+ * Dashboard del Cliente - Tienda Axioma (Pijamas Harv)
+ * Diseño Original Restaurado + Carrito en Menú Superior
+ * (Mejora visual: tipografía, espaciados, cards, tablas y formularios)
+ */
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_rol'] ?? '') !== 'Cliente') {
+$rolActualCliente = strtolower(trim((string) ($_SESSION['usuario_rol'] ?? '')));
+if (!isset($_SESSION['usuario_id']) || $rolActualCliente !== 'cliente') {
     header("Location: index.php?url=login");
     exit();
 }
 
-// Cargar la conexión mediante la clase Database de tu proyecto
-// Nota: ruta corregida desde frontend/src/pages hacia backend/src/conexion.php
+// Cargar la conexión mediante la clase Database
 require_once __DIR__ . '/../../../backend/src/conexion.php';
-$db = new Database();
-$pdo = $db->getConnection();
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+try {
+    $db = new Database();
+    $pdo = $db->getConnection();
+    // Corrección exacta del atributo y valor de PDO
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (Exception $e) {
+    die("Error crítico de conexión a la base de datos.");
+}
 
-// Compatibilidad con claves de sesión antiguas y nuevas
+// Compatibilidad de variables de sesión
 $nombre_cliente = $_SESSION['usuario_name'] ?? $_SESSION['nombre_usuario'] ?? 'Cliente';
 $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
+
+// Conteo del carrito para el menú de navegación
+$cantidad_carrito = isset($_SESSION['carrito']) ? array_sum($_SESSION['carrito']) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Panel - Tienda Axioma</title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --axioma-primary: #6c5ce7;
+            --axioma-primary-dark: #5a4bd1;
+            --axioma-success: #22a366;
+            --axioma-bg: #f5f6fb;
+            --axioma-card-border: #eef0f7;
+            --axioma-text-muted: #7a7f95;
+            --axioma-radius-lg: 1.15rem;
+            --axioma-radius-md: 0.85rem;
+            --axioma-shadow: 0 10px 30px rgba(31, 32, 65, 0.06);
+            --axioma-shadow-hover: 0 14px 34px rgba(31, 32, 65, 0.10);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--axioma-bg);
+            color: #2a2c3e;
+        }
+
+        h2, h4, .card-title {
+            font-family: 'Poppins', 'Inter', sans-serif;
+        }
+
+        .client-dashboard-container {
+            max-width: 1100px;
+        }
+
+        /* Cabecera de bienvenida */
+        .client-dashboard-container h2.fw-bold {
+            letter-spacing: -0.02em;
+            font-size: 1.85rem;
+        }
+
+        .client-dashboard-container p.text-muted {
+            font-size: 0.98rem;
+        }
+
+        /* Cards */
+        .card {
+            border-radius: var(--axioma-radius-lg) !important;
+            border: 1px solid var(--axioma-card-border) !important;
+            box-shadow: var(--axioma-shadow);
+            transition: box-shadow 0.25s ease, transform 0.25s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--axioma-shadow-hover);
+        }
+
+        .card-body.p-4 {
+            padding: 2rem !important;
+        }
+
+        .card-title {
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .card-title.text-primary {
+            color: var(--axioma-primary) !important;
+        }
+
+        /* Formulario de compra */
+        .form-label.fw-semibold {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #4b4d63;
+            margin-bottom: 0.45rem;
+        }
+
+        .form-select,
+        .form-control {
+            border-radius: var(--axioma-radius-md);
+            border: 1px solid #e2e4ef;
+            padding: 0.65rem 0.9rem;
+            font-size: 0.95rem;
+            background-color: #fbfbfe;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-select:focus,
+        .form-control:focus {
+            border-color: var(--axioma-primary);
+            box-shadow: 0 0 0 0.2rem rgba(108, 92, 231, 0.15);
+            background-color: #fff;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--axioma-success), #1c8c58);
+            border: none;
+            border-radius: var(--axioma-radius-md);
+            font-size: 0.95rem;
+            letter-spacing: 0.01em;
+            box-shadow: 0 6px 16px rgba(34, 163, 102, 0.25);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(34, 163, 102, 0.32);
+        }
+
+        .btn-outline-primary {
+            border-radius: var(--axioma-radius-md);
+            border-color: var(--axioma-primary);
+            color: var(--axioma-primary);
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--axioma-primary);
+            border-color: var(--axioma-primary);
+            transform: translateY(-1px);
+        }
+
+        .hero-banner {
+            background: linear-gradient(135deg, #f8e9ef 0%, #f3f1ff 52%, #eef7ff 100%);
+            border: 1px solid rgba(108, 92, 231, 0.08);
+            border-radius: 1.6rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 12px 28px rgba(31, 32, 65, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+        }
+
+        .hero-copy {
+            max-width: 60%;
+        }
+
+        .eyebrow {
+            display: inline-block;
+            background: rgba(108, 92, 231, 0.12);
+            color: var(--axioma-primary-dark);
+            padding: 0.45rem 0.8rem;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .hero-copy h1 {
+            font-family: 'Poppins', 'Inter', sans-serif;
+            font-size: clamp(2rem, 3vw, 3rem);
+            line-height: 1.08;
+            font-weight: 700;
+            margin: 0.9rem 0 0.7rem;
+            color: #1f2432;
+            letter-spacing: -0.04em;
+        }
+
+        .hero-copy p {
+            color: #5d6377;
+            font-size: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .hero-promo {
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+            min-width: 260px;
+        }
+
+        .promo-card {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 1.1rem;
+            padding: 1rem 1.1rem;
+            box-shadow: 0 12px 28px rgba(31, 32, 65, 0.05);
+        }
+
+        .promo-card span {
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: #7b7f94;
+            margin-bottom: 0.35rem;
+        }
+
+        .promo-card strong {
+            color: #1d2332;
+            font-size: 1.05rem;
+        }
+
+        .promo-card--alt {
+            background: rgba(34, 163, 102, 0.08);
+            border-color: rgba(34, 163, 102, 0.12);
+        }
+
+        .product-card {
+            border-radius: 1.2rem !important;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 36px rgba(31, 32, 65, 0.12) !important;
+        }
+
+        .product-image-wrap {
+            background: linear-gradient(135deg, #f8f8ff, #fdf5f7);
+            padding: 0.75rem;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 1rem;
+            display: block;
+        }
+
+        .product-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #2a2c3e;
+            margin-bottom: 0.55rem;
+            min-height: 48px;
+        }
+
+        .product-meta {
+            margin-bottom: 0.75rem;
+        }
+
+        .stock-badge {
+            display: inline-block;
+            background: #eef2ff;
+            color: #4b4d63;
+            border-radius: 999px;
+            padding: 0.28rem 0.7rem;
+            font-size: 0.76rem;
+            font-weight: 600;
+        }
+
+        .product-price {
+            color: var(--axioma-primary-dark);
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .btn-product {
+            border-radius: 0.8rem;
+            font-weight: 600;
+            padding: 0.72rem 0.9rem;
+        }
+
+        /* Tablas */
+        .table-responsive {
+            border-radius: var(--axioma-radius-md);
+            overflow: hidden;
+        }
+
+        .table {
+            margin-bottom: 0;
+            font-size: 0.93rem;
+        }
+
+        .table thead.table-dark th {
+            background-color: #2a2c3e;
+            border: none;
+            font-weight: 600;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 0.9rem 1rem;
+        }
+
+        .table thead.table-light th {
+            background-color: #f3f3fa;
+            border: none;
+            font-weight: 600;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #4b4d63;
+            padding: 0.9rem 1rem;
+        }
+
+        .table tbody tr {
+            transition: background-color 0.15s ease;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #fafafe;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #f1f0fb;
+        }
+
+        .table td, .table th {
+            padding: 0.85rem 1rem;
+            vertical-align: middle;
+            border-color: #f0f0f6;
+        }
+
+        .badge.bg-secondary {
+            background-color: #e5e6f5 !important;
+            color: #4b4d63 !important;
+            font-weight: 600;
+            padding: 0.4em 0.75em;
+            border-radius: 0.5rem;
+        }
+
+        .text-success.fw-bold {
+            color: var(--axioma-success) !important;
+        }
+
+        /* Estado vacío */
+        .table td.text-center.text-muted {
+            font-size: 0.92rem;
+            padding: 2.25rem 1rem;
+        }
+
+        /* Separación general entre bloques */
+        .card.mb-4 {
+            margin-bottom: 1.75rem !important;
+        }
+
+        @media (max-width: 576px) {
+            .card-body.p-4 {
+                padding: 1.25rem !important;
+            }
+        }
+    </style>
 </head>
 <body class="bg-light">
-    <?php require_once __DIR__ . '/../../../backend/src/controllers/header.php'; ?>
+
+
+    <?php 
+    // Incluir cabecera adicional si el sistema lo requiere
+    $headerPath = __DIR__ . '/../../../backend/src/controllers/header.php';
+    if (file_exists($headerPath)) {
+        require_once $headerPath;
+    }
+    ?>
+
     <div class="container py-5 client-dashboard-container">
-        <h2 class="fw-bold text-dark mb-4">Bienvenido, <?php echo htmlspecialchars($nombre_cliente); ?> 🛒</h2>
-
-        <!-- Formulario de Compra -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body p-4">
-                <h4 class="card-title mb-3 fw-bold text-dark">Catálogo de Productos Disponibles</h4>
-                
-                <form action="index.php?url=procesar_compra_cliente" method="POST">
-                    <div class="mb-3">
-                        <label for="id_producto" class="form-label fw-semibold">Selecciona un Producto:</label>
-                        <select name="id_producto" id="id_producto" class="form-select" required>
-                            <option value="">Elige...</option>
-                            <?php
-                            try {
-                                // Traemos los productos. Si quieres probar sin el filtro de stock de momento, puedes quitar el WHERE
-                                $stmtProd = $pdo->query("SELECT * FROM productos WHERE STOCK > 0");
-                                while ($p = $stmtProd->fetch(PDO::FETCH_ASSOC)) {
-                                    echo '<option value="' . $p['ID_PRODUCTO'] . '">' . htmlspecialchars($p['nombre'] ?? $p['NOMBRE']) . ' - $' . number_format($p['precio'] ?? $p['PRECIO'], 2) . ' (Stock: ' . ($p['stock'] ?? $p['STOCK']) . ')</option>';
-                                }
-                            } catch (Exception $e) {
-                                echo '<option value="">Error al cargar productos</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="cantidad" class="form-label fw-semibold">Cantidad:</label>
-                        <input type="number" name="cantidad" id="cantidad" class="form-control" value="1" min="1" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="id_pago" class="form-label fw-semibold">Método de Pago:</label>
-                        <select name="id_pago" id="id_pago" class="form-select" required>
-                            <?php
-                            try {
-                                $stmtPago = $pdo->query("SELECT * FROM metodos_pago");
-                                while ($mp = $stmtPago->fetch(PDO::FETCH_ASSOC)) {
-                                    echo '<option value="' . $mp['ID_PAGO'] . '">' . htmlspecialchars($mp['nombre_metodo']) . '</option>';
-                                }
-                            } catch (Exception $e) {
-                                echo '<option value="1">Efectivo</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-
-                    <button type="submit" class="btn btn-success px-4">Comprar Ahora</button>
-                </form>
+        <?php if (($_GET['compra'] ?? '') === 'exitoso' && isset($_GET['factura'])): ?>
+            <div class="alert alert-success d-flex justify-content-between align-items-center gap-3" role="alert">
+                <span><i class="fa-solid fa-circle-check me-2"></i>Compra realizada correctamente.</span>
+                <a class="btn btn-success" target="_blank" href="frontend/src/pages/ver_factura.php?id=<?php echo (int) $_GET['factura']; ?>">
+                    <i class="fa-solid fa-file-invoice me-1"></i> Ver factura
+                </a>
+            </div>
+        <?php endif; ?>
+        
+        <!-- Cabecera de Bienvenida -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-dark mb-1">Bienvenido, <?php echo htmlspecialchars($nombre_cliente); ?> 🛒</h2>
+                <p class="text-muted mb-0">Gestiona tus compras, consulta el catálogo y revisa tus facturas recientes.</p>
             </div>
         </div>
 
-        <!-- Historial de Compras del Cliente -->
-        <div class="card shadow-sm border-0">
+        <div class="hero-banner">
+            <div class="hero-copy">
+                <span class="eyebrow">Colección nueva</span>
+                <h1>Pijamas que te acompañan cada noche</h1>
+                <p>Descubre prendas suaves, modernas y cómodas para dormir con estilo en cada momento del día.</p>
+                <a href="#catalogo" class="btn btn-primary px-3 py-2">Ver catálogo</a>
+            </div>
+
+            <div class="hero-promo">
+                <div class="promo-card">
+                    <span>Hasta 30% OFF</span>
+                    <strong>Pijamas de algodón</strong>
+                </div>
+                <div class="promo-card promo-card--alt">
+                    <span>Envío gratis</span>
+                    <strong>En compras desde $100.000</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Catálogo de Productos -->
+        <div id="catalogo" class="card shadow-sm border-0 mb-4 rounded-4 overflow-hidden">
             <div class="card-body p-4">
-                <h4 class="card-title mb-3 fw-bold text-dark">Mis Compras Realizadas</h4>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title mb-1 fw-bold text-primary">✨ Catálogo de productos</h4>
+                        <p class="text-muted mb-0">Descubre tus pijamas favoritos y agrégalos al carrito.</p>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <?php
+                    try {
+                        $stmtProd = $pdo->query("SELECT * FROM productos WHERE STOCK > 0 ORDER BY ID_PRODUCTO DESC");
+                        if ($stmtProd->rowCount() > 0) {
+                            while ($p = $stmtProd->fetch(PDO::FETCH_ASSOC)) {
+                                $idProd = (int) ($p['ID_PRODUCTO'] ?? 0);
+                                $nombreProd = htmlspecialchars($p['nombre'] ?? $p['NOMBRE'] ?? 'Producto');
+                                $precioProd = (float) ($p['precio'] ?? $p['PRECIO'] ?? 0);
+                                $stockProd = (int) ($p['stock'] ?? $p['STOCK'] ?? 0);
+                                $imagenProd = !empty($p['imagen']) ? $p['imagen'] : 'https://via.placeholder.com/600x700?text=Pijama+Harv';
+                                ?>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="card h-100 border-0 shadow-sm product-card">
+                                        <div class="product-image-wrap">
+                                            <img src="<?php echo htmlspecialchars($imagenProd); ?>" alt="<?php echo $nombreProd; ?>" class="product-image">
+                                        </div>
+                                        <div class="card-body d-flex flex-column">
+                                            <h5 class="product-title"><?php echo $nombreProd; ?></h5>
+                                            <div class="product-meta">
+                                                <span class="stock-badge">Stock: <?php echo $stockProd; ?></span>
+                                            </div>
+                                            <div class="product-price">$<?php echo number_format($precioProd, 2); ?></div>
+
+                                            <form action="index.php?url=agregar_carrito" method="POST" class="mt-auto">
+                                                <input type="hidden" name="id_producto" value="<?php echo $idProd; ?>">
+                                                <input type="hidden" name="nombre_producto" value="<?php echo $nombreProd; ?>">
+                                                <input type="hidden" name="precio_producto" value="<?php echo $precioProd; ?>">
+                                                <button type="submit" class="btn btn-primary w-100 btn-product">Agregar al carrito</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php
+                            }
+                        } else {
+                            echo '<div class="col-12 text-center text-muted py-4">No hay productos disponibles en este momento.</div>';
+                        }
+                    } catch (Exception $e) {
+                        echo '<div class="col-12 text-center text-danger py-4">Error al cargar el catálogo de productos.</div>';
+                    }
+                    ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial de Compras del Cliente (Diseño Original) -->
+        <div class="card shadow-sm border-0 mb-4 rounded-4">
+            <div class="card-body p-4">
+                <h4 class="card-title mb-3 fw-bold text-dark">📦 Mis Compras Realizadas</h4>
                 <div class="table-responsive">
                     <table class="table table-striped table-hover align-middle">
                         <thead class="table-dark">
@@ -115,18 +515,18 @@ $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
                                 if ($stmtHistorial->rowCount() > 0) {
                                     while ($compra = $stmtHistorial->fetch(PDO::FETCH_ASSOC)) {
                                         echo '<tr>';
-                                        echo '<td>#' . $compra['ID_VENTAS'] . '</td>';
-                                        echo '<td>' . htmlspecialchars($compra['producto'] ?? 'Producto') . '</td>';
-                                        echo '<td>' . $compra['cantidad'] . '</td>';
+                                        echo '<td class="fw-semibold">#' . $compra['ID_VENTAS'] . '</td>';
+                                        echo '<td>' . htmlspecialchars($compra['producto'] ?? 'Producto no disponible') . '</td>';
+                                        echo '<td><span class="badge bg-secondary">' . $compra['cantidad'] . '</span></td>';
                                         echo '<td class="fw-bold text-success">$' . number_format($compra['total'], 2) . '</td>';
-                                        echo '<td>' . $compra['FECHA_VENTA'] . '</td>';
+                                        echo '<td class="text-muted small">' . $compra['FECHA_VENTA'] . '</td>';
                                         echo '</tr>';
                                     }
                                 } else {
-                                    echo '<tr><td colspan="5" class="text-center text-muted py-3">Aún no has realizado ninguna compra.</td></tr>';
+                                    echo '<tr><td colspan="5" class="text-center text-muted py-4">Aún no has realizado ninguna compra en el sistema.</td></tr>';
                                 }
                             } catch (Exception $e) {
-                                echo '<tr><td colspan="5" class="text-center text-danger">Error al cargar el historial.</td></tr>';
+                                echo '<tr><td colspan="5" class="text-center text-danger py-3">Error al cargar el historial de compras.</td></tr>';
                             }
                             ?>
                         </tbody>
@@ -135,16 +535,16 @@ $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
             </div>
         </div>
 
-        <!-- Mis Facturas de Compra -->
-        <div class="card shadow-sm border-0 mt-4">
+        <!-- Mis Facturas de Compra (Diseño Original) -->
+        <div class="card shadow-sm border-0 rounded-4">
             <div class="card-body p-4">
-                <h4 class="card-title mb-3 fw-bold text-dark">Mis Facturas de Compra</h4>
+                <h4 class="card-title mb-3 fw-bold text-dark">📄 Mis Facturas de Compra</h4>
                 <div class="table-responsive">
-                    <table class="table table-sm table-hover align-middle">
+                    <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
                                 <th>N° Factura</th>
-                                <th>Fecha</th>
+                                <th>Fecha de Emisión</th>
                                 <th>Acción</th>
                             </tr>
                         </thead>
@@ -155,22 +555,23 @@ $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
                                     $stmtFact = $pdo->prepare("SELECT ID_FACTURA, FECHA FROM facturas WHERE ID_CLIENTE = ? ORDER BY FECHA DESC");
                                     $stmtFact->execute([$id_cliente]);
                                     $facturas = $stmtFact->fetchAll(PDO::FETCH_ASSOC);
+                                    
                                     if (count($facturas) > 0) {
                                         foreach ($facturas as $f) {
                                             echo '<tr>';
-                                            echo '<td>#' . htmlspecialchars($f['ID_FACTURA']) . '</td>';
-                                            echo '<td>' . htmlspecialchars($f['FECHA']) . '</td>';
-                                            echo '<td><a class="btn btn-sm btn-outline-primary" target="_blank" href="frontend/src/pages/ver_factura.php?id=' . urlencode($f['ID_FACTURA']) . '">Ver Factura</a></td>';
+                                            echo '<td class="fw-semibold">#' . htmlspecialchars($f['ID_FACTURA']) . '</td>';
+                                            echo '<td class="text-muted">' . htmlspecialchars($f['FECHA']) . '</td>';
+                                            echo '<td><a class="btn btn-sm btn-outline-primary px-3" target="_blank" href="frontend/src/pages/ver_factura.php?id=' . urlencode($f['ID_FACTURA']) . '">Ver factura</a> <a class="btn btn-sm btn-outline-secondary px-3" target="_blank" href="frontend/src/pages/generar_factura.php?id=' . urlencode($f['ID_FACTURA']) . '">Descargar PDF</a></td>';
                                             echo '</tr>';
                                         }
                                     } else {
-                                        echo '<tr><td colspan="3" class="text-center text-muted">No hay facturas disponibles.</td></tr>';
+                                        echo '<tr><td colspan="3" class="text-center text-muted py-3">No hay facturas electrónicas disponibles todavía.</td></tr>';
                                     }
                                 } else {
-                                    echo '<tr><td colspan="3" class="text-center text-warning">Cliente no identificado.</td></tr>';
+                                    echo '<tr><td colspan="3" class="text-center text-warning py-3">Cliente no identificado correctamente en la sesión.</td></tr>';
                                 }
                             } catch (Exception $e) {
-                                echo '<tr><td colspan="3" class="text-center text-danger">Error al cargar facturas.</td></tr>';
+                                echo '<tr><td colspan="3" class="text-center text-danger py-3">Error al conectar con la base de datos de facturas.</td></tr>';
                             }
                             ?>
                         </tbody>
@@ -180,5 +581,8 @@ $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
         </div>
 
     </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

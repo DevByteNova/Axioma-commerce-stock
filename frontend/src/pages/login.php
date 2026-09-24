@@ -81,7 +81,8 @@
                     const data = JSON.parse(rawText);
 
                     if (data.success) {
-                        const destino = data.destino || (data.rol === 'Cliente' ? 'cliente_dashboard' : 'dashboard');
+                        const rol = String(data.rol || '').toLowerCase();
+                        const destino = data.destino || (rol === 'cliente' ? 'cliente_dashboard' : 'dashboard');
                         window.location.href = `index.php?url=${destino}`;
                     } else {
                         errorMessage.textContent = data.message || 'Credenciales incorrectas.';

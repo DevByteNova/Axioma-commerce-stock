@@ -6,6 +6,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (isset($_SESSION['usuario_rol'])) {
+    $_SESSION['usuario_rol'] = ucfirst(strtolower(trim($_SESSION['usuario_rol'])));
+}
+
 // Forzar pantalla de login para depuración: visita index.php?force_login=1
 // HACK: Este bloque es un parche rápido para forzar la pantalla de login
 // durante la depuración. No es una solución final; se deja temporalmente
@@ -180,16 +184,58 @@ $rutasPermitidas = [
     'editar_cliente'      => ['Administrador', 'Vendedor'],
     'eliminar_cliente'    => ['Administrador', 'Vendedor'],
     'dashboard'           => ['Administrador', 'Vendedor'],
+    'dashboard_cliente'   => ['Cliente'],
     'cliente_dashboard'   => ['Cliente'], // Ruta exclusiva para clientes
     'clientes'            => ['Administrador', 'Vendedor'],
     'usuarios'            => ['Administrador'],
     'registro_vendedor'   => ['Administrador'],
     'registrar_pijamas'   => ['Administrador', 'Vendedor'],
     'registrar_pijama'    => ['Administrador', 'Vendedor'],
+    'procesar_compra'     => ['Cliente'],
     'inventario'          => ['Administrador'],
     'lista_vendedores'    => ['Administrador'],
-    'ver_inventario'      => ['Administrador', 'Vendedor', 'Cliente'] // Permitir ver stock si lo deseas
+    'ver_inventario'      => ['Administrador', 'Vendedor', 'Cliente'], // Permitir ver stock si lo deseas
+    'ver_carrito'         => ['Cliente'],
+    'eliminar_del_carrito'=> ['Cliente'],
+    'agregar_carrito'     => ['Cliente']
 ];
+
+if ($route === 'eliminar_del_carrito' && isset($_GET['id'])) {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $idEliminar = (string) $_GET['id'];
+    if (isset($_SESSION['carrito'][$idEliminar])) {
+        unset($_SESSION['carrito'][$idEliminar]);
+    }
+    header('Location: index.php?url=ver_carrito');
+    exit;
+}
+
+if ($route === 'agregar_carrito' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $id = $_POST['id_producto'] ?? null;
+    $nombre = $_POST['nombre_producto'] ?? 'Producto';
+    $precio = $_POST['precio_producto'] ?? 0;
+    $cantidad = 1;
+
+    if ($id !== null) {
+        if (isset($_SESSION['carrito'][$id])) {
+            $_SESSION['carrito'][$id]['cantidad'] += $cantidad;
+        } else {
+            $_SESSION['carrito'][$id] = [
+                'nombre' => $nombre,
+                'precio' => (float) $precio,
+                'cantidad' => (int) $cantidad,
+            ];
+        }
+    }
+
+    header('Location: index.php?url=ver_carrito');
+    exit;
+}
 
 // Validación 1: Verificar si la ruta existe
 if (!array_key_exists($route, $rutasPermitidas)) {
@@ -245,8 +291,17 @@ switch ($route) {
         }
         break;
 
+    case 'dashboard_cliente':
     case 'cliente_dashboard':
         require_once __DIR__ . '/frontend/src/pages/clientes_dashboard.php';
+        break;
+
+    case 'ver_carrito':
+        require_once __DIR__ . '/frontend/src/pages/carrito.php';
+        break;
+
+    case 'procesar_compra':
+        require_once __DIR__ . '/frontend/src/pages/procesar_compra.php';
         break;
 
     case 'registro':
