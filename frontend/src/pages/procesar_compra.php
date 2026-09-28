@@ -4,9 +4,8 @@
  * Tienda Axioma
  */
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../../../backend/src/config/security.php';
+configure_secure_session();
 
 // 1. Validar que sea un cliente logueado
 $rolActualCliente = strtolower(trim((string) ($_SESSION['usuario_rol'] ?? '')));
@@ -31,11 +30,16 @@ if (!$conexion) {
 }
 
 $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+ensureEstadoPedidoColumn($conexion);
 
 $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? 1;
 
 // 3. Procesar el formulario cuando el cliente hace clic en "Pagar Ahora"
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        header("Location: index.php?url=procesar_compra&error=" . urlencode("La sesión del formulario expiró. Inténtalo de nuevo."));
+        exit();
+    }
     
     $id_pago = intval($_POST['id_pago']);
     $id_vendedor = 1;
@@ -101,6 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
         $stmt_fac->execute([$fecha_solo, $id_cliente]);
         $id_factura_generada = (int) $conexion->lastInsertId();
 
+        $estado_pedido = 'Pagado';
+
         // Registrar detalle en 'ventas' y actualizar stock de productos
         foreach ($_SESSION['carrito'] as $id_producto => $item) {
             $cantidad = is_array($item) ? intval($item['cantidad']) : intval($item);
@@ -116,9 +122,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
 
             $total_linea = $cantidad * $precio_unitario;
 
-            $sql_venta = "INSERT INTO ventas (ID_PRODUCTO, cantidad, total, FECHA_VENTA, ID_VENDEDOR, ID_CLIENTE, ID_PAGO) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $sql_venta = "INSERT INTO ventas (ID_PRODUCTO, cantidad, total, FECHA_VENTA, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, estado_pedido) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_venta = $conexion->prepare($sql_venta);
-            $stmt_venta->execute([$id_producto, $cantidad, $total_linea, $fecha_actual, $id_vendedor, $id_cliente, $id_pago]);
+            $stmt_venta->execute([$id_producto, $cantidad, $total_linea, $fecha_actual, $id_vendedor, $id_cliente, $id_pago, $estado_pedido]);
 
             $sql_stock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
             $stmt_stock = $conexion->prepare($sql_stock);
@@ -138,6 +144,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
         }
         header("Location: index.php?url=procesar_compra&error=" . urlencode("Error al procesar la compra: " . $e->getMessage()));
         exit();
+    }
+}
+
+function ensureEstadoPedidoColumn(PDO $conexion): void
+{
+    $stmt = $conexion->prepare("SHOW COLUMNS FROM ventas LIKE 'estado_pedido'");
+    $stmt->execute();
+
+    if ($stmt->rowCount() === 0) {
+        $conexion->exec("ALTER TABLE ventas ADD COLUMN estado_pedido VARCHAR(30) NOT NULL DEFAULT 'Pendiente' AFTER ID_PAGO");
     }
 }
 
@@ -196,6 +212,7 @@ function numeroTarjetaValido(string $numero): bool
                     <?php endif; ?>
 
                     <form action="index.php?url=procesar_compra" method="POST" id="formPago">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                         
                         <!-- Selector de Método de Pago (Cargado dinámicamente de la BD) -->
                         <div class="mb-4">

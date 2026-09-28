@@ -1,13 +1,22 @@
 <?php
 // index.php (Raíz del proyecto Axioma)
 
-// 1. Iniciar sesión
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/backend/src/config/security.php';
+configure_secure_session();
 
+// 1. Iniciar sesión
 if (isset($_SESSION['usuario_rol'])) {
     $_SESSION['usuario_rol'] = ucfirst(strtolower(trim($_SESSION['usuario_rol'])));
+}
+
+function ensureVentasEstadoPedidoColumn(PDO $pdo): void
+{
+    $stmt = $pdo->prepare("SHOW COLUMNS FROM ventas LIKE 'estado_pedido'");
+    $stmt->execute();
+
+    if ($stmt->rowCount() === 0) {
+        $pdo->exec("ALTER TABLE ventas ADD COLUMN estado_pedido VARCHAR(30) NOT NULL DEFAULT 'Pendiente' AFTER ID_PAGO");
+    }
 }
 
 // Forzar pantalla de login para depuración: visita index.php?force_login=1
@@ -51,6 +60,10 @@ error_reporting(E_ALL);
 // 3.1 Manejo de guardar_venta (envío desde el dashboard)
 $url = $_GET['url'] ?? '';
 if ($url === 'guardar_venta' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        http_response_code(403);
+        exit('Solicitud no válida. Actualiza la página e inténtalo de nuevo.');
+    }
     require_once __DIR__ . '/backend/src/conexion.php';
     $db = new Database();
     $pdo = $db->getConnection();
@@ -67,6 +80,7 @@ if ($url === 'guardar_venta' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($id_producto > 0 && $cantidad > 0) {
         try {
+            ensureVentasEstadoPedidoColumn($pdo);
             $stmt = $pdo->prepare("SELECT PRECIO, STOCK FROM productos WHERE ID_PRODUCTO = ?");
             $stmt->execute([$id_producto]);
             $producto = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -76,9 +90,9 @@ if ($url === 'guardar_venta' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $pdo->beginTransaction();
 
-                $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, cantidad, total, FECHA_VENTA) VALUES (?, ?, ?, ?, ?, ?, NOW())";
+                $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, estado_pedido, cantidad, total, FECHA_VENTA) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
                 $stmtVenta = $pdo->prepare($sqlVenta);
-                $stmtVenta->execute([$id_producto, $id_vendedor, $id_cliente, $id_pago, $cantidad, $total_venta]);
+                $stmtVenta->execute([$id_producto, $id_vendedor, $id_cliente, $id_pago, 'Pagado', $cantidad, $total_venta]);
 
                 $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
                 $stmtStock = $pdo->prepare($sqlStock);
@@ -106,6 +120,10 @@ if ($url === 'guardar_venta' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // 3.2 Manejo de compra desde dashboard de cliente
 if ($url === 'procesar_compra_cliente' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        http_response_code(403);
+        exit('Solicitud no válida. Actualiza la página e inténtalo de nuevo.');
+    }
     // Verificar sesión y rol
     if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_rol'] ?? '') !== 'Cliente') {
         header('Location: index.php?url=login');
@@ -131,6 +149,7 @@ if ($url === 'procesar_compra_cliente' && $_SERVER['REQUEST_METHOD'] === 'POST')
     }
 
     try {
+        ensureVentasEstadoPedidoColumn($pdo);
         $stmt = $pdo->prepare("SELECT PRECIO, STOCK FROM productos WHERE ID_PRODUCTO = ?");
         $stmt->execute([$id_producto]);
         $producto = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -144,14 +163,14 @@ if ($url === 'procesar_compra_cliente' && $_SERVER['REQUEST_METHOD'] === 'POST')
 
         $pdo->beginTransaction();
 
-        $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, cantidad, total, FECHA_VENTA) VALUES (?, ?, ?, ?, ?, ?, NOW())";
+        $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, estado_pedido, cantidad, total, FECHA_VENTA) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
         $stmtVenta = $pdo->prepare($sqlVenta);
         // cliente compra directamente; no vendedor asociado
         // Algunas versiones del esquema no permiten NULL en ID_VENDEDOR,
         // usar 0 como valor por defecto para indicar "sin vendedor".
         // Usar un vendedor por defecto (id 1) si no hay vendedor asociado
         $id_vendedor_for_insert = 1;
-        $stmtVenta->execute([$id_producto, $id_vendedor_for_insert, $id_cliente, $id_pago, $cantidad, $total]);
+        $stmtVenta->execute([$id_producto, $id_vendedor_for_insert, $id_cliente, $id_pago, 'Pagado', $cantidad, $total]);
 
         $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
         $stmtStock = $pdo->prepare($sqlStock);

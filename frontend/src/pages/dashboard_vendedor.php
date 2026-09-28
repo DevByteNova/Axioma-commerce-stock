@@ -8,7 +8,51 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'Vendedor')
     exit;
 }
 
+require_once __DIR__ . '/../../../backend/src/conexion.php';
+require_once __DIR__ . '/../../../backend/src/config/security.php';
+
+function ensureEstadoPedidoColumn(PDO $pdo): void
+{
+    $stmt = $pdo->prepare("SHOW COLUMNS FROM ventas LIKE 'estado_pedido'");
+    $stmt->execute();
+
+    if ($stmt->rowCount() === 0) {
+        $pdo->exec("ALTER TABLE ventas ADD COLUMN estado_pedido VARCHAR(30) NOT NULL DEFAULT 'Pagado' AFTER ID_PAGO");
+    }
+}
+
 $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
+
+if (!isset($pdo)) {
+    try {
+        $pdo = (new Database())->getConnection();
+    } catch (Exception $e) {
+        $pdo = null;
+    }
+}
+
+$resumen_ventas = [
+    'cantidad_ventas' => 0,
+    'unidades' => 0,
+    'total_vendido' => 0,
+    'total_efectivo' => 0
+];
+
+if ($pdo) {
+    try {
+        $stmtResumen = $pdo->prepare("SELECT COUNT(*) AS cantidad_ventas,
+                                             COALESCE(SUM(v.cantidad), 0) AS unidades,
+                                             COALESCE(SUM(v.total), 0) AS total_vendido,
+                                             COALESCE(SUM(CASE WHEN LOWER(mp.nombre_metodo) LIKE '%efectivo%' THEN v.total ELSE 0 END), 0) AS total_efectivo
+                                      FROM ventas v
+                                      LEFT JOIN metodos_pago mp ON v.ID_PAGO = mp.ID_PAGO
+                                      WHERE v.ID_VENDEDOR = :id_vendedor");
+        $stmtResumen->execute([':id_vendedor' => (int) ($_SESSION['id_vendedor'] ?? 0)]);
+        $resumen_ventas = $stmtResumen->fetch(PDO::FETCH_ASSOC) ?: $resumen_ventas;
+    } catch (Exception $e) {
+        // La tabla mantiene los valores cero si no se puede consultar el resumen.
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -44,12 +88,41 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
         </div>
 
         <div class="row g-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h3 class="card-title mb-3 fw-bold text-dark">Resumen de ventas</h3>
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Ventas realizadas</th>
+                                        <th>Unidades vendidas</th>
+                                        <th>Total vendido</th>
+                                        <th>Total en efectivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><?php echo (int) $resumen_ventas['cantidad_ventas']; ?></td>
+                                        <td><?php echo (int) $resumen_ventas['unidades']; ?></td>
+                                        <td class="fw-bold text-success">$<?php echo number_format((float) $resumen_ventas['total_vendido'], 2); ?></td>
+                                        <td class="fw-bold text-primary">$<?php echo number_format((float) $resumen_ventas['total_efectivo'], 2); ?></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="col-12 col-lg-6">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body p-4 d-flex flex-column">
                         <h3 class="card-title mb-4 fw-bold text-dark">Registrar Nueva Venta</h3>
 
                         <form action="index.php?url=guardar_venta" method="POST">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 
                             <!-- Seleccionar Producto -->
                             <div class="mb-3">
@@ -57,20 +130,24 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
                                 <select name="id_producto" id="id_producto" class="form-select" required>
                                     <option value="">Seleccione un producto...</option>
                                     <?php
+                                    $queryProd = null;
                                     try {
-                                        if (!isset($pdo)) {
-                                            $pdo = new PDO('mysql:host=localhost;dbname=axioma_bd;charset=utf8mb4', 'root', '');
-                                            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                        if ($pdo) {
+                                            ensureEstadoPedidoColumn($pdo);
+                                            $queryProd = $pdo->query("SELECT * FROM productos WHERE STOCK > 0");
+                                        } else {
+                                            echo '<option value="">Error de conexión a la BD</option>';
                                         }
 
-                                        $queryProd = $pdo->query("SELECT * FROM productos WHERE STOCK > 0");
-                                        while ($prod = $queryProd->fetch(PDO::FETCH_ASSOC)) {
-                                            $id = $prod['ID_PRODUCTO'] ?? $prod['id_producto'] ?? 1;
-                                            $nombreProd = $prod['nombre'] ?? 'Sin nombre';
-                                            $stockProd = $prod['STOCK'] ?? 0;
-                                            $precioProd = $prod['PRECIO'] ?? 0;
+                                        if ($pdo && $queryProd) {
+                                            while ($prod = $queryProd->fetch(PDO::FETCH_ASSOC)) {
+                                                $id = $prod['ID_PRODUCTO'] ?? $prod['id_producto'] ?? 1;
+                                                $nombreProd = $prod['nombre'] ?? 'Sin nombre';
+                                                $stockProd = $prod['STOCK'] ?? 0;
+                                                $precioProd = $prod['PRECIO'] ?? 0;
 
-                                            echo '<option value="' . $id . '">' . htmlspecialchars($nombreProd) . ' - Stock: ' . $stockProd . ' ($' . number_format($precioProd, 2) . ')</option>';
+                                                echo '<option value="' . $id . '">' . htmlspecialchars($nombreProd) . ' - Stock: ' . $stockProd . ' ($' . number_format($precioProd, 2) . ')</option>';
+                                            }
                                         }
                                     } catch (Exception $e) {
                                         echo '<option value="">Error de conexión a la BD</option>';
@@ -84,10 +161,15 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
                                 <label for="id_cliente" class="form-label fw-semibold">Cliente:</label>
                                 <select name="id_cliente" id="id_cliente" class="form-select" required>
                                     <?php
+                                    $queryCli = null;
                                     try {
-                                        $queryCli = $pdo->query("SELECT ID_CLIENTE, nombre FROM clientes");
-                                        while ($cli = $queryCli->fetch(PDO::FETCH_ASSOC)) {
-                                            echo '<option value="' . $cli['ID_CLIENTE'] . '">' . htmlspecialchars($cli['nombre']) . '</option>';
+                                        if ($pdo) {
+                                            $queryCli = $pdo->query("SELECT ID_CLIENTE, nombre FROM clientes");
+                                            while ($cli = $queryCli->fetch(PDO::FETCH_ASSOC)) {
+                                                echo '<option value="' . $cli['ID_CLIENTE'] . '">' . htmlspecialchars($cli['nombre']) . '</option>';
+                                            }
+                                        } else {
+                                            echo '<option value="1">Cliente General</option>';
                                         }
                                     } catch (Exception $e) {
                                         echo '<option value="1">Cliente General</option>';
@@ -101,10 +183,15 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
                                 <label for="id_pago" class="form-label fw-semibold">Método de Pago:</label>
                                 <select name="id_pago" id="id_pago" class="form-select" required>
                                     <?php
+                                    $queryPago = null;
                                     try {
-                                        $queryPago = $pdo->query("SELECT ID_PAGO, nombre_metodo FROM metodos_pago");
-                                        while ($pago = $queryPago->fetch(PDO::FETCH_ASSOC)) {
-                                            echo '<option value="' . $pago['ID_PAGO'] . '">' . htmlspecialchars($pago['nombre_metodo']) . '</option>';
+                                        if ($pdo) {
+                                            $queryPago = $pdo->query("SELECT ID_PAGO, nombre_metodo FROM metodos_pago");
+                                            while ($pago = $queryPago->fetch(PDO::FETCH_ASSOC)) {
+                                                echo '<option value="' . $pago['ID_PAGO'] . '">' . htmlspecialchars($pago['nombre_metodo']) . '</option>';
+                                            }
+                                        } else {
+                                            echo '<option value="1">Efectivo</option>';
                                         }
                                     } catch (Exception $e) {
                                         echo '<option value="1">Efectivo</option>';
@@ -145,6 +232,7 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
                                         <th>Producto</th>
                                         <th>Cliente</th>
                                         <th>Método de Pago</th>
+                                        <th>Estado</th>
                                         <th>Cantidad</th>
                                         <th>Total</th>
                                         <th>Fecha</th>
@@ -154,21 +242,29 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
                                     <?php
                                     if (!isset($pdo)) {
                                         try {
-                                            $pdo = new PDO('mysql:host=localhost;dbname=axioma_bd;charset=utf8mb4', 'root', '');
-                                            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                            $pdo = (new Database())->getConnection();
                                         } catch (Exception $e) {
                                             $pdo = null;
                                         }
                                     }
                                     try {
-                                        $sqlHistorial = "SELECT v.ID_VENTAS, p.nombre AS producto, c.nombre AS cliente, 
-                                                            mp.nombre_metodo AS pago, v.cantidad, v.total, v.FECHA_VENTA 
+                                        if ($pdo) {
+                                            ensureEstadoPedidoColumn($pdo);
+                                        }
+
+                                        $sqlHistorial = "SELECT v.ID_VENTAS, p.nombre AS producto, c.nombre AS cliente,
+                                                            mp.nombre_metodo AS pago, v.estado_pedido, v.cantidad, v.total, v.FECHA_VENTA
                                                      FROM ventas v
                                                      LEFT JOIN productos p ON v.ID_PRODUCTO = p.ID_PRODUCTO
                                                      LEFT JOIN clientes c ON v.ID_CLIENTE = c.ID_CLIENTE
                                                      LEFT JOIN metodos_pago mp ON v.ID_PAGO = mp.ID_PAGO
+                                                     WHERE v.ID_VENDEDOR = :id_vendedor
                                                      ORDER BY v.FECHA_VENTA DESC";
-                                        $queryHistorial = $pdo ? $pdo->query($sqlHistorial) : null;
+                                        $queryHistorial = null;
+                                        if ($pdo) {
+                                            $queryHistorial = $pdo->prepare($sqlHistorial);
+                                            $queryHistorial->execute([':id_vendedor' => (int) ($_SESSION['id_vendedor'] ?? 0)]);
+                                        }
 
                                         if ($queryHistorial && $queryHistorial->rowCount() > 0) {
                                             while ($row = $queryHistorial->fetch(PDO::FETCH_ASSOC)) {
@@ -177,16 +273,17 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
                                                 echo '<td>' . htmlspecialchars($row['producto'] ?? 'Desconocido') . '</td>';
                                                 echo '<td>' . htmlspecialchars($row['cliente'] ?? 'General') . '</td>';
                                                 echo '<td><span class="badge bg-secondary">' . htmlspecialchars($row['pago'] ?? 'Efectivo') . '</span></td>';
+                                                echo '<td><span class="badge bg-success">' . htmlspecialchars($row['estado_pedido'] ?? 'Pagado') . '</span></td>';
                                                 echo '<td>' . $row['cantidad'] . '</td>';
                                                 echo '<td class="fw-bold text-success">$' . number_format($row['total'], 2) . '</td>';
                                                 echo '<td>' . $row['FECHA_VENTA'] . '</td>';
                                                 echo '</tr>';
                                             }
                                         } else {
-                                            echo '<tr><td colspan="7" class="text-center text-muted py-3">No hay ventas registradas todavía.</td></tr>';
+                                            echo '<tr><td colspan="8" class="text-center text-muted py-3">No hay ventas registradas todavía.</td></tr>';
                                         }
                                     } catch (Exception $e) {
-                                        echo '<tr><td colspan="7" class="text-center text-danger">Error al cargar el historial de ventas.</td></tr>';
+                                        echo '<tr><td colspan="8" class="text-center text-danger">Error al cargar el historial de ventas: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
                                     }
                                     ?>
                                 </tbody>
@@ -202,7 +299,7 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
 <script>
 function cargarReporteVentas() {
     // Apuntamos directamente con la ruta completa desde la raíz de localhost
-    fetch('/Axioma-Commerce-Store-main/server.php', {
+    fetch('./backend/src/server.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ action: 'obtener_reporte_ventas' })

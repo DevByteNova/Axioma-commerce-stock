@@ -1,6 +1,12 @@
 <?php
-// Conexión a la base de datos (ajusta tus credenciales)
-$conexion = new mysqli("localhost", "root", "", "axioma_bd");
+require_once __DIR__ . '/../../../backend/src/config/env.php';
+
+$conexion = new mysqli(
+    axioma_env('DB_HOST', 'localhost'),
+    axioma_env('DB_USER', 'root'),
+    axioma_env('DB_PASSWORD'),
+    axioma_env('DB_NAME', 'axioma_bd')
+);
 
 if ($conexion->connect_error) {
     die("Error de conexión: " . $conexion->connect_error);
@@ -9,7 +15,7 @@ if ($conexion->connect_error) {
 // Obtener el ID de la factura desde la URL (ej: ver_factura.php?id=1)
 $id_factura = isset($_GET['id']) ? intval($_GET['id']) : 1;
 
-// Consulta SQL para obtener los detalles de la factura y la venta relacionada
+// Consulta SQL preparada para obtener los detalles de la factura y la venta relacionada
 $sql = "SELECT 
             f.ID_FACTURA,
             f.FECHA AS FECHA_FACTURA,
@@ -29,11 +35,13 @@ $sql = "SELECT
         INNER JOIN ventas v ON f.ID_CLIENTE = v.ID_CLIENTE
         INNER JOIN productos p ON v.ID_PRODUCTO = p.ID_PRODUCTO
         INNER JOIN metodos_pago mp ON v.ID_PAGO = mp.ID_PAGO
-        INNER JOIN vendedor ved ON v.ID_VENDEDOR = ved.ID_VENDEDOR
-        WHERE f.ID_FACTURA = $id_factura";
-
-$resultado = $conexion->query($sql);
-$factura = $resultado->fetch_assoc();
+        INNER JOIN vendedor ved ON v.ID_VENDEDOR = ved.ID_VENDEDOR";
+    $sql .= " WHERE f.ID_FACTURA = ?";
+    $stmt = $conexion->prepare($sql);
+    $stmt->bind_param('i', $id_factura);
+    $stmt->execute();
+    $resultado = $stmt->get_result();
+    $factura = $resultado->fetch_assoc();
 ?>
 
 <!DOCTYPE html>

@@ -6,13 +6,15 @@ header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Methods: POST");
 
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/config/security.php';
 require_once __DIR__ . '/models/Usuario.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+configure_secure_session();
 
 $data = json_decode(file_get_contents("php://input"), true);
+if (!is_array($data)) {
+    $data = [];
+}
 
 // ==========================================
 // MÓDULO 1: LÓGICA DE AUTENTICACIÓN (LOGIN)
@@ -32,7 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['ac
     $usuarioLogueado = $usuarioModel->buscarPorUsername($username);
 
     if ($usuarioLogueado) {
-        if (password_verify($password, $usuarioLogueado['password_hash']) || $password === 'admin123' || $password === $usuarioLogueado['password_hash']) {
+        if (password_verify($password, $usuarioLogueado['password_hash'])) {
+            session_regenerate_id(true);
             
             $_SESSION['usuario_id'] = $usuarioLogueado['id'];
             $_SESSION['usuario_name'] = $usuarioLogueado['usuario'];
@@ -208,26 +211,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['ac
     $db = $database->getConnection();
 
     $rol = $_SESSION['usuario_rol'];
-    $usuario_id = $_SESSION['usuario_id'] ?? 0; // Asegúrate de guardar el ID del usuario al iniciar sesión
+    $id_vendedor = $_SESSION['id_vendedor'] ?? 0;
+    $desde = trim((string) ($data['desde'] ?? ''));
+    $hasta = trim((string) ($data['hasta'] ?? ''));
+    $condicionesFecha = '';
+    $parametrosFecha = [];
+
+    if ($desde !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $desde)) {
+        $condicionesFecha .= ' AND DATE(v.FECHA_VENTA) >= :desde';
+        $parametrosFecha[':desde'] = $desde;
+    }
+    if ($hasta !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $hasta)) {
+        $condicionesFecha .= ' AND DATE(v.FECHA_VENTA) <= :hasta';
+        $parametrosFecha[':hasta'] = $hasta;
+    }
 
     try {
         if ($rol === 'Administrador') {
-            // El Admin ve el total de todos los vendedores
-            $query = "SELECT u.usuario, SUM(v.total) as vendido 
+            // El Admin ve el total agrupado por vendedor real.
+            $query = "SELECT ved.NOMBRE AS usuario, COALESCE(SUM(v.total), 0) AS vendido
                       FROM ventas v 
-                      JOIN usuarios u ON v.id_vendedor = u.id 
-                      GROUP BY u.usuario";
+                      JOIN vendedor ved ON v.ID_VENDEDOR = ved.ID_VENDEDOR
+                      WHERE 1 = 1 $condicionesFecha
+                      GROUP BY ved.ID_VENDEDOR, ved.NOMBRE
+                      ORDER BY vendido DESC";
             $stmt = $db->prepare($query);
-            $stmt->execute();
+            $stmt->execute($parametrosFecha);
+        } elseif ($rol === 'Vendedor' && $id_vendedor > 0) {
+            // El Vendedor solo ve sus propias ventas.
+            $query = "SELECT ved.NOMBRE AS usuario, COALESCE(SUM(v.total), 0) AS vendido
+                      FROM ventas v 
+                      JOIN vendedor ved ON v.ID_VENDEDOR = ved.ID_VENDEDOR
+                      WHERE v.ID_VENDEDOR = :id_vendedor $condicionesFecha
+                      GROUP BY ved.ID_VENDEDOR, ved.NOMBRE";
+            $stmt = $db->prepare($query);
+            $stmt->execute([':id_vendedor' => $id_vendedor] + $parametrosFecha);
         } else {
-            // El Vendedor solo ve sus propias ventas
-            $query = "SELECT u.usuario, SUM(v.total) as vendido 
-                      FROM ventas v 
-                      JOIN usuarios u ON v.id_vendedor = u.id 
-                      WHERE v.id_vendedor = :id_vendedor 
-                      GROUP BY u.usuario";
-            $stmt = $db->prepare($query);
-            $stmt->execute([':id_vendedor' => $usuario_id]);
+            echo json_encode(["success" => false, "message" => "Rol no autorizado para este reporte."]);
+            exit;
         }
 
         $reporte = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -236,6 +257,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['ac
     } catch (Exception $e) {
         echo json_encode(["success" => false, "message" => "Error: " . $e->getMessage()]);
     }
+    exit;
+}
+// ==========================================
+// MÓDULO: ACTUALIZAR ESTADO DE VENTA
+// ==========================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['action'] === 'actualizar_estado_venta') {
+    if (($_SESSION['usuario_rol'] ?? '') !== 'Administrador' || !verify_csrf_token($data['csrf_token'] ?? null)) {
+        echo json_encode(["success" => false, "message" => "No autorizado."]);
+        exit;
+    }
+
+    $id_venta = filter_var($data['id_venta'] ?? null, FILTER_VALIDATE_INT);
+    $estadosPermitidos = ['Pendiente', 'Pagado', 'Enviado', 'Entregado', 'Cancelado'];
+    $estado = trim((string) ($data['estado'] ?? ''));
+
+    if (!$id_venta || !in_array($estado, $estadosPermitidos, true)) {
+        echo json_encode(["success" => false, "message" => "Datos de estado inválidos."]);
+        exit;
+    }
+
+    $database = new Database();
+    $db = $database->getConnection();
+    $stmtColumn = $db->query("SHOW COLUMNS FROM ventas LIKE 'estado_pedido'");
+    if ($stmtColumn->rowCount() === 0) {
+        $db->exec("ALTER TABLE ventas ADD COLUMN estado_pedido VARCHAR(30) NOT NULL DEFAULT 'Pendiente' AFTER ID_PAGO");
+    }
+    $stmt = $db->prepare('UPDATE ventas SET estado_pedido = :estado WHERE ID_VENTAS = :id_venta');
+    $stmt->execute([':estado' => $estado, ':id_venta' => $id_venta]);
+    echo json_encode(["success" => true, "message" => "Estado actualizado."]);
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'exportar_reporte_ventas') {
+    if (($_SESSION['usuario_rol'] ?? '') !== 'Administrador') {
+        http_response_code(403);
+        exit('No autorizado.');
+    }
+
+    $database = new Database();
+    $db = $database->getConnection();
+    $stmt = $db->query("SELECT ved.NOMBRE AS vendedor, COALESCE(SUM(v.total), 0) AS total_vendido
+                        FROM ventas v
+                        INNER JOIN vendedor ved ON v.ID_VENDEDOR = ved.ID_VENDEDOR
+                        GROUP BY ved.ID_VENDEDOR, ved.NOMBRE
+                        ORDER BY total_vendido DESC");
+
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="reporte-ventas.csv"');
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Vendedor', 'Total vendido']);
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        fputcsv($output, [$row['vendedor'], $row['total_vendido']]);
+    }
+    fclose($output);
     exit;
 }
 // ==========================================
@@ -271,10 +345,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
 // 1. Si la petición es para registrar una venta (POST)
 if (isset($_POST['accion']) && $_POST['accion'] === 'registrar_venta') {
-    
-    $id_producto = intval($_POST['id_producto']);
-    $cantidad = intval($_POST['cantidad']);
-    $id_vendedor = intval($_POST['id_vendedor']); // El vendedor que está logueado
+    $database = new Database();
+    $pdo = $database->getConnection();
+
+    if (!$pdo) {
+        echo json_encode(['status' => 'error', 'mensaje' => 'No se pudo conectar a la base de datos.']);
+        exit;
+    }
+
+    $id_producto = intval($_POST['id_producto'] ?? 0);
+    $cantidad = intval($_POST['cantidad'] ?? 0);
+    $id_vendedor = intval($_POST['id_vendedor'] ?? 0);
 
     try {
         // Verificar stock y precio del producto
@@ -314,7 +395,9 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'registrar_venta') {
         exit();
 
     } catch (Exception $e) {
-        $pdo->rollBack();
+        if ($pdo && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         echo "Error en la transacción: " . $e->getMessage();
     }
 }
@@ -450,11 +533,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['ac
         foreach ($detalles_validados as $det) {
             $sqlDetalle = "INSERT INTO detalle_pedido (ID_PEDIDO, ID_PRODUCTO, CANTIDAD, PRECIO_UNITARIO, SUBTOTAL) VALUES (?, ?, ?, ?, ?)";
             $stmtDet = $db->prepare($sqlDetalle);
-            $stmtDet.execute([$id_pedido, $det['id_producto'], $det['cantidad'], $det['precio_unitario'], $det['subtotal']]);
+            $stmtDet->execute([$id_pedido, $det['id_producto'], $det['cantidad'], $det['precio_unitario'], $det['subtotal']]);
 
             $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
             $stmtStock = $db->prepare($sqlStock);
-            $stmtStock.execute([$det['cantidad'], $det['id_producto']]);
+            $stmtStock->execute([$det['cantidad'], $det['id_producto']]);
         }
 
         // Todo correcto, confirmamos cambios en la base de datos

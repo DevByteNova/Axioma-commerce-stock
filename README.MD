@@ -24,11 +24,13 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 ## 🚀 Guía de Implementación
 1. Inicia **Apache** y **MySQL** desde XAMPP.
 2. Crea o importa la base de datos usando `database/axioma_bd.sql` desde phpMyAdmin.
-3. Revisa las credenciales en `backend/src/conexion.php`:
-	- Servidor: `localhost`
-	- Usuario: `root`
-	- Clave: vacía por defecto en XAMPP
-	- Base de datos: `Axioma_BD`
+3. Crea la configuración local desde la plantilla:
+
+	```powershell
+	Copy-Item .env.example .env
+	```
+
+	Después completa `.env` con el servidor, usuario, contraseña y base de datos de MySQL. `.env` está ignorado por Git y no debe publicarse.
 4. Instala las dependencias si no existe `vendor/`:
 
 	```bash
@@ -41,12 +43,22 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 	http://localhost/Axioma-commerce-stock-master/
 	```
 
+6. Ejecuta la prueba básica de integración:
+
+	```powershell
+	php tests/smoke.php
+	```
+
+7. Para producción, ejecuta `database/create_app_user.sql` con una contraseña segura y cambia `DB_USER` y `DB_PASSWORD` en `.env`.
+
 > El archivo SQL aparece como `axioma_bd`. En instalaciones Windows normalmente no hay diferencia entre mayúsculas y minúsculas, pero conviene usar el mismo nombre configurado en `conexion.php`.
 
 ## 🔒 Seguridad
 * Autenticación basada en sesiones PHP.
 * Rutas protegidas según el rol: `Cliente`, `Vendedor` y `Administrador`.
 * El checkout y las operaciones principales usan PDO y consultas preparadas.
+* Los formularios principales usan tokens CSRF y las sesiones usan cookies protegidas.
+* Las contraseñas se validan con `password_verify`; no hay contraseñas de respaldo en el código.
 * No se almacenan números completos, CVV ni datos sensibles de tarjetas.
 * La validación de tarjeta incluida es local para pruebas; no reemplaza una pasarela bancaria real.
 
@@ -81,6 +93,8 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 - Después de comprar, el dashboard muestra la factura recién creada.
 - `frontend/src/pages/ver_factura.php?id=...` permite consultar la factura.
 - `frontend/src/pages/generar_factura.php?id=...` genera el PDF con Dompdf.
+- El administrador puede filtrar el reporte de ventas por fecha y exportarlo a CSV.
+- Los estados permitidos de una venta son `Pendiente`, `Pagado`, `Enviado`, `Entregado` y `Cancelado`.
 
 > Actualmente `ventas` no tiene una columna `ID_FACTURA`; las facturas relacionan las ventas mediante el cliente. Para separar estrictamente los productos de cada factura, se debe agregar esa relación en la base de datos.
 

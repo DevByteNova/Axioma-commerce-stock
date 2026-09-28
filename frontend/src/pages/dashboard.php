@@ -28,9 +28,18 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Administrador';
         <main class="dashboard-main">
             <?php
             // Conexión única al principio del main
-            require_once 'C:\xampp\htdocs\Axioma-commerce-stock-main\backend\src\conexion.php'; 
+            require_once __DIR__ . '/../../../backend/src/conexion.php';
             $database = new Database();
             $db = $database->getConnection();
+
+            $stock_critico = [];
+            try {
+                $stmtStockCritico = $db->prepare("SELECT ID_PRODUCTO, nombre, STOCK, talla FROM productos WHERE STOCK <= :limite ORDER BY STOCK ASC, nombre ASC");
+                $stmtStockCritico->execute([':limite' => 5]);
+                $stock_critico = $stmtStockCritico->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                $stock_critico = [];
+            }
             ?>
 
             <!-- BOTONES DE NAVEGACIÓN Y GESTIÓN -->
@@ -79,10 +88,43 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Administrador';
                 ?>
             </div>
 
+            <div class="seccion-tablas">
+                <h2 class="dashboard-section-title">Stock crítico</h2>
+                <p class="dashboard-section-description">Productos con cinco unidades o menos disponibles:</p>
+                <table class="tabla-reportes">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Talla</th>
+                            <th>Stock disponible</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($stock_critico): ?>
+                            <?php foreach ($stock_critico as $producto): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($producto['nombre']); ?></td>
+                                    <td><?php echo htmlspecialchars($producto['talla']); ?></td>
+                                    <td><?php echo (int) $producto['STOCK']; ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr><td colspan="3" class="table-message">No hay productos en stock crítico.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
             <!-- SECCIÓN: REPORTE DE VENTAS EN TIEMPO REAL -->
             <div class="seccion-tablas">
                 <h2 class="dashboard-section-title">Reporte de Ventas por Vendedor</h2>
                 <p class="dashboard-section-description">Rendimiento de ventas en tiempo real:</p>
+                <div class="report-filters">
+                    <label>Desde <input type="date" id="reporte-desde"></label>
+                    <label>Hasta <input type="date" id="reporte-hasta"></label>
+                    <button type="button" class="btn-accion bg-blue" onclick="cargarReporteVentas()">Filtrar</button>
+                    <a class="btn-accion bg-green" href="./backend/src/server.php?action=exportar_reporte_ventas">Exportar CSV</a>
+                </div>
                 
                 <table class="tabla-reportes">
                     <thead>
@@ -139,7 +181,11 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Administrador';
             fetch('./backend/src/server.php', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ action: 'obtener_reporte_ventas' })
+                body: JSON.stringify({
+                    action: 'obtener_reporte_ventas',
+                    desde: document.getElementById('reporte-desde')?.value || '',
+                    hasta: document.getElementById('reporte-hasta')?.value || ''
+                })
             })
             .then(res => {
                 const contentType = res.headers.get("content-type");

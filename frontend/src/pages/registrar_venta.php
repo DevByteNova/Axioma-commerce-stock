@@ -1,10 +1,10 @@
 <?php
 session_start();
 
-// Conexión directa para asegurar que procese la venta con éxito
+require_once __DIR__ . '/../../../backend/src/conexion.php';
+
 try {
-    $pdo = new PDO('mysql:host=localhost;dbname=axioma_bd;charset=utf8mb4', 'root', '');
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo = (new Database())->getConnection();
 } catch (Exception $e) {
     die("Error de conexión a la BD: " . $e->getMessage());
 }

@@ -15,11 +15,7 @@ nbproject/
 # Ignorar carpeta de herramientas/temporales creada por el equipo
 tools/
 
-<<<<<<< HEAD
 /vendor/
 
 # Ignore environment variables
 .env
-=======
-/vendor/
->>>>>>> 127d3bb (Implement sales registration and order processing modules; update .gitignore and TODOs; add composer files for dependency management)

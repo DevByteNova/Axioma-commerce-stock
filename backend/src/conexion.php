@@ -1,16 +1,28 @@
 <?php
+
+require_once __DIR__ . '/config/env.php';
+
 class Database {
-    private $host = "localhost";
-    private $db_name = "Axioma_BD";
-    private $username = "root";
-    private $password = "";
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
     public $conn;
+
+    public function __construct()
+    {
+        $this->host = axioma_env('DB_HOST', 'localhost');
+        $this->db_name = axioma_env('DB_NAME', 'axioma_bd');
+        $this->username = axioma_env('DB_USER', 'root');
+        $this->password = axioma_env('DB_PASSWORD');
+    }
 
     public function getConnection() {
         $this->conn = null;
         try {
-            $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name, $this->username, $this->password);
-            $this->conn->exec("set names utf8");
+            $charset = axioma_env('DB_CHARSET', 'utf8mb4');
+            $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name . ";charset=" . $charset, $this->username, $this->password);
+            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch(PDOException $exception) {
             echo "Error de conexión: " . $exception->getMessage();
         }

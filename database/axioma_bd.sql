@@ -124,7 +124,8 @@ CREATE TABLE `metodos_pago` (
 
 INSERT INTO `metodos_pago` (`ID_PAGO`, `nombre_metodo`, `estado`) VALUES
 (1, 'Tarjeta de Crédito / Débito', 1),
-(2, 'PSE (Pago Seguro en Línea)', 1);
+(2, 'PSE (Pago Seguro en Línea)', 1),
+(3, 'Efectivo', 1);
 
 -- --------------------------------------------------------
 
@@ -383,7 +384,7 @@ ALTER TABLE `facturas`
 -- AUTO_INCREMENT de la tabla `metodos_pago`
 --
 ALTER TABLE `metodos_pago`
-  MODIFY `ID_PAGO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `ID_PAGO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `productos`
@@ -432,6 +433,11 @@ ALTER TABLE `usuarios`
 ALTER TABLE `ventas`
   ADD CONSTRAINT `fk_ventas_producto` FOREIGN KEY (`ID_PRODUCTO`) REFERENCES `productos` (`ID_PRODUCTO`) ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_ventas_vendedor` FOREIGN KEY (`ID_VENDEDOR`) REFERENCES `vendedor` (`ID_VENDEDOR`) ON UPDATE CASCADE;
+
+-- Hashes bcrypt de las cuentas de prueba.
+UPDATE `usuarios` SET `password_hash` = '$2y$10$kqxjv4SX2QMg9y5suD8DMeeHtbuI4VQWpyGdOn/qdtt0xn3k6hk66' WHERE `usuario` = 'admin';
+UPDATE `usuarios` SET `password_hash` = '$2y$10$TstFYJ.X.im8RHTJZjJS2eANYNUlGy8RHaP9l8iIGW12P/xIWMKrS' WHERE `usuario` = 'vendedor_test';
+UPDATE `usuarios` SET `password_hash` = '$2y$10$y3a7FhygEnm.bi/jo/ri5u.wTEwmg0eT6i.ahu3xSOJpUtCHi6Ytm' WHERE `usuario` = 'cliente_test';
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
