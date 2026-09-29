@@ -19,3 +19,7 @@ tools/
 
 # Ignore environment variables
 .env
+
+# Fotos de productos subidas desde el sistema (se conserva la carpeta)
+frontend/src/public/uploads/productos/*
+!frontend/src/public/uploads/productos/.gitkeep

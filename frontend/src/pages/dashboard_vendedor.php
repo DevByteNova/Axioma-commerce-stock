@@ -59,7 +59,7 @@ if ($pdo) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Vendedor - Axioma</title>
+    <title>Dashboard Vendedor | Pijamas Harv</title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <!-- Incluyendo Bootstrap CSS para que los formularios y botones luzcan profesionales -->
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
@@ -298,7 +298,7 @@ if ($pdo) {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 function cargarReporteVentas() {
-    // Apuntamos directamente con la ruta completa desde la raíz de localhost
+    // Ruta relativa: la página se carga a través de index.php en la raíz del proyecto
     fetch('./backend/src/server.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},

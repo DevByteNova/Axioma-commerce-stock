@@ -1,6 +1,6 @@
 <?php
 /**
- * Dashboard del Cliente - Tienda Axioma (Pijamas Harv)
+ * Dashboard del Cliente - Pijamas Harv · Creaciones Decare
  * Diseño Original Restaurado + Carrito en Menú Superior
  * (Mejora visual: tipografía, espaciados, cards, tablas y formularios)
  */
@@ -30,15 +30,13 @@ try {
 $nombre_cliente = $_SESSION['usuario_name'] ?? $_SESSION['nombre_usuario'] ?? 'Cliente';
 $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
 
-// Conteo del carrito para el menú de navegación
-$cantidad_carrito = isset($_SESSION['carrito']) ? array_sum($_SESSION['carrito']) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Panel - Tienda Axioma</title>
+    <title>Mi Panel | Pijamas Harv</title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -46,11 +44,12 @@ $cantidad_carrito = isset($_SESSION['carrito']) ? array_sum($_SESSION['carrito']
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./frontend/src/public/css/catalogo.css">
 
     <style>
         :root {
-            --axioma-primary: #6c5ce7;
-            --axioma-primary-dark: #5a4bd1;
+            --axioma-primary: #f0787a;
+            --axioma-primary-dark: #c9505a;
             --axioma-success: #22a366;
             --axioma-bg: #f5f6fb;
             --axioma-card-border: #eef0f7;
@@ -131,7 +130,7 @@ $cantidad_carrito = isset($_SESSION['carrito']) ? array_sum($_SESSION['carrito']
         .form-select:focus,
         .form-control:focus {
             border-color: var(--axioma-primary);
-            box-shadow: 0 0 0 0.2rem rgba(108, 92, 231, 0.15);
+            box-shadow: 0 0 0 0.2rem rgba(240, 120, 122, 0.2);
             background-color: #fff;
         }
 
@@ -165,8 +164,8 @@ $cantidad_carrito = isset($_SESSION['carrito']) ? array_sum($_SESSION['carrito']
         }
 
         .hero-banner {
-            background: linear-gradient(135deg, #f8e9ef 0%, #f3f1ff 52%, #eef7ff 100%);
-            border: 1px solid rgba(108, 92, 231, 0.08);
+            background: linear-gradient(135deg, #fde8e6 0%, #fff6f5 60%, #ffffff 100%);
+            border: 1px solid rgba(240, 120, 122, 0.18);
             border-radius: 1.6rem;
             padding: 2rem;
             margin-bottom: 2rem;
@@ -183,7 +182,7 @@ $cantidad_carrito = isset($_SESSION['carrito']) ? array_sum($_SESSION['carrito']
 
         .eyebrow {
             display: inline-block;
-            background: rgba(108, 92, 231, 0.12);
+            background: rgba(240, 120, 122, 0.14);
             color: var(--axioma-primary-dark);
             padding: 0.45rem 0.8rem;
             border-radius: 999px;
@@ -416,7 +415,7 @@ $cantidad_carrito = isset($_SESSION['carrito']) ? array_sum($_SESSION['carrito']
                 <span class="eyebrow">Colección nueva</span>
                 <h1>Pijamas que te acompañan cada noche</h1>
                 <p>Descubre prendas suaves, modernas y cómodas para dormir con estilo en cada momento del día.</p>
-                <a href="#catalogo" class="btn btn-primary px-3 py-2">Ver catálogo</a>
+                <a href="#catalogo" class="btn btn-marca px-3 py-2">Ver catálogo</a>
             </div>
 
             <div class="hero-promo">
@@ -431,59 +430,14 @@ $cantidad_carrito = isset($_SESSION['carrito']) ? array_sum($_SESSION['carrito']
             </div>
         </div>
 
-        <!-- Catálogo de Productos -->
-        <div id="catalogo" class="card shadow-sm border-0 mb-4 rounded-4 overflow-hidden">
+        <!-- Catálogo de Productos (compartido con la tienda pública) -->
+        <div class="card shadow-sm border-0 mb-4 rounded-4">
             <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h4 class="card-title mb-1 fw-bold text-primary">✨ Catálogo de productos</h4>
-                        <p class="text-muted mb-0">Descubre tus pijamas favoritos y agrégalos al carrito.</p>
-                    </div>
-                </div>
-
-                <div class="row g-4">
-                    <?php
-                    try {
-                        $stmtProd = $pdo->query("SELECT * FROM productos WHERE STOCK > 0 ORDER BY ID_PRODUCTO DESC");
-                        if ($stmtProd->rowCount() > 0) {
-                            while ($p = $stmtProd->fetch(PDO::FETCH_ASSOC)) {
-                                $idProd = (int) ($p['ID_PRODUCTO'] ?? 0);
-                                $nombreProd = htmlspecialchars($p['nombre'] ?? $p['NOMBRE'] ?? 'Producto');
-                                $precioProd = (float) ($p['precio'] ?? $p['PRECIO'] ?? 0);
-                                $stockProd = (int) ($p['stock'] ?? $p['STOCK'] ?? 0);
-                                $imagenProd = !empty($p['imagen']) ? $p['imagen'] : 'https://via.placeholder.com/600x700?text=Pijama+Harv';
-                                ?>
-                                <div class="col-md-3 col-sm-6">
-                                    <div class="card h-100 border-0 shadow-sm product-card">
-                                        <div class="product-image-wrap">
-                                            <img src="<?php echo htmlspecialchars($imagenProd); ?>" alt="<?php echo $nombreProd; ?>" class="product-image">
-                                        </div>
-                                        <div class="card-body d-flex flex-column">
-                                            <h5 class="product-title"><?php echo $nombreProd; ?></h5>
-                                            <div class="product-meta">
-                                                <span class="stock-badge">Stock: <?php echo $stockProd; ?></span>
-                                            </div>
-                                            <div class="product-price">$<?php echo number_format($precioProd, 2); ?></div>
-
-                                            <form action="index.php?url=agregar_carrito" method="POST" class="mt-auto">
-                                                <input type="hidden" name="id_producto" value="<?php echo $idProd; ?>">
-                                                <input type="hidden" name="nombre_producto" value="<?php echo $nombreProd; ?>">
-                                                <input type="hidden" name="precio_producto" value="<?php echo $precioProd; ?>">
-                                                <button type="submit" class="btn btn-primary w-100 btn-product">Agregar al carrito</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php
-                            }
-                        } else {
-                            echo '<div class="col-12 text-center text-muted py-4">No hay productos disponibles en este momento.</div>';
-                        }
-                    } catch (Exception $e) {
-                        echo '<div class="col-12 text-center text-danger py-4">Error al cargar el catálogo de productos.</div>';
-                    }
-                    ?>
-                </div>
+                <?php
+                $rutaCatalogo = 'cliente_dashboard';
+                $puedeComprar = true;
+                require __DIR__ . '/partials/catalogo_productos.php';
+                ?>
             </div>
         </div>
 

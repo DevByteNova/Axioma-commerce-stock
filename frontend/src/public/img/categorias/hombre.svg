@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 700" role="img" aria-label="Pijama de hombre">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e5edf6"/><stop offset="1" stop-color="#c9d8ea"/></linearGradient>
+    <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse"><circle cx="8" cy="8" r="4" fill="#7d97b5" opacity=".55"/><circle cx="25" cy="25" r="3" fill="#ffffff" opacity=".7"/></pattern>
+  </defs>
+  <rect width="600" height="700" fill="url(#bg)"/>
+  <path d="M470 110a52 52 0 1 0 38 88 62 62 0 0 1-38-88z" fill="#ffffff" opacity=".85"/>
+  <g fill="#ffffff" opacity=".8"><circle cx="110" cy="120" r="5"/><circle cx="160" cy="80" r="3"/><circle cx="520" cy="300" r="4"/><circle cx="80" cy="330" r="3"/></g>
+  <!-- pantalón -->
+  <path d="M215 430h170l18 220h-78l-22-150-22 150h-78z" fill="#46607e"/>
+  <path d="M215 430h170l18 220h-78l-22-150-22 150h-78z" fill="url(#dots)"/>
+  <!-- camisa -->
+  <path d="M230 170l70 26 70-26 95 50-38 92-40-18v186H213V294l-40 18-38-92z" fill="#46607e"/>
+  <path d="M230 170l70 26 70-26 95 50-38 92-40-18v186H213V294l-40 18-38-92z" fill="url(#dots)"/>
+  <path d="M230 170l70 26-34 52zM370 170l-70 26 34 52z" fill="#2f4560"/>
+  <path d="M300 196v284" stroke="#2f4560" stroke-width="5"/>
+  <g fill="#ffffff"><circle cx="300" cy="270" r="7"/><circle cx="300" cy="330" r="7"/><circle cx="300" cy="390" r="7"/><circle cx="300" cy="450" r="7"/></g>
+  
+</svg>

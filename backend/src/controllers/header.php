@@ -3,13 +3,19 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+require_once __DIR__ . '/../config/marca.php';
+
 if (isset($_SESSION['usuario_rol'])) {
     $_SESSION['usuario_rol'] = ucfirst(strtolower(trim($_SESSION['usuario_rol'])));
 }
 
 $rolActual = $_SESSION['usuario_rol'] ?? 'Invitado';
-$routeActual = $_GET['url'] ?? 'dashboard';
-$rutaInicio = $rolActual === 'Cliente' ? 'cliente_dashboard' : 'dashboard';
+$routeActual = $_GET['url'] ?? 'catalogo';
+$rutaInicio = match ($rolActual) {
+    'Cliente' => 'cliente_dashboard',
+    'Administrador', 'Vendedor' => 'dashboard',
+    default => 'catalogo',
+};
 
 $projectRoot = str_replace('\\', '/', dirname(dirname(dirname(__DIR__))));
 $documentRoot = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
@@ -22,6 +28,7 @@ if ($documentRoot !== '' && strpos($projectRoot, $documentRoot) === 0) {
 }
 
 $menuItems = [
+    ['route' => 'catalogo', 'label' => 'Catálogo', 'roles' => ['Invitado', 'Administrador', 'Vendedor', 'Cliente'], 'url' => $baseUrl . '/index.php?url=catalogo'],
     ['route' => 'dashboard', 'label' => 'Dashboard', 'roles' => ['Administrador', 'Vendedor'], 'url' => $baseUrl . '/index.php?url=dashboard'],
     ['route' => 'clientes', 'label' => 'Clientes', 'roles' => ['Administrador', 'Vendedor'], 'url' => $baseUrl . '/index.php?url=clientes'],
     ['route' => 'ver_inventario', 'label' => 'Inventario', 'roles' => ['Administrador', 'Vendedor'], 'url' => $baseUrl . '/index.php?url=ver_inventario'],
@@ -34,10 +41,26 @@ $menuItems = [
 
 <header class="main-header">
     <div class="header-container">
-        <a href="<?php echo htmlspecialchars($baseUrl . '/index.php?url=' . $rutaInicio, ENT_QUOTES, 'UTF-8'); ?>" class="header-brand" aria-label="Ir al dashboard principal">
-            <span class="header-brand__mark">A</span>
-            <span>Axioma</span>
+        <a href="<?php echo htmlspecialchars($baseUrl . '/index.php?url=' . $rutaInicio, ENT_QUOTES, 'UTF-8'); ?>" class="header-brand" aria-label="Ir al inicio">
+            <span class="header-brand__mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 21V10"/><path d="M12 14c-3.5 0-6-2.5-6-6 3.5 0 6 2.5 6 6z"/><path d="M12 12c3.5 0 6-2.5 6-6-3.5 0-6 2.5-6 6z"/><path d="M12 9c-1.4-1.4-1.4-3.6 0-5 1.4 1.4 1.4 3.6 0 5z"/>
+                </svg>
+            </span>
+            <span class="header-brand__texto">
+                <?php echo htmlspecialchars(MARCA_TIENDA, ENT_QUOTES, 'UTF-8'); ?>
+                <small><?php echo htmlspecialchars(MARCA_COLECCION, ENT_QUOTES, 'UTF-8'); ?></small>
+            </span>
         </a>
+
+        <?php if ($rolActual === 'Invitado'): ?>
+            <nav class="nav-menu" aria-label="Navegación principal">
+                <a href="<?php echo htmlspecialchars($baseUrl . '/index.php?url=catalogo', ENT_QUOTES, 'UTF-8'); ?>"
+                   class="nav-menu__link <?php echo ($routeActual === 'catalogo') ? 'nav-menu__link--active' : ''; ?>">Catálogo</a>
+                <a href="<?php echo htmlspecialchars($baseUrl . '/index.php?url=registro', ENT_QUOTES, 'UTF-8'); ?>" class="nav-menu__link">Registrarse</a>
+                <a href="<?php echo htmlspecialchars($baseUrl . '/index.php?url=login', ENT_QUOTES, 'UTF-8'); ?>" class="nav-menu__link nav-menu__link--cta">Iniciar sesión</a>
+            </nav>
+        <?php endif; ?>
 
         <?php if (in_array($rolActual, ['Administrador', 'Vendedor', 'Cliente'], true)): ?>
             <nav class="nav-menu" aria-label="Navegación principal">

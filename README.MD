@@ -53,6 +53,16 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 
 > El archivo SQL aparece como `axioma_bd`. En instalaciones Windows normalmente no hay diferencia entre mayúsculas y minúsculas, pero conviene usar el mismo nombre configurado en `conexion.php`.
 
+## 🛍️ Catálogo de pijamas (tienda pública)
+
+- La página de inicio (`index.php` o `index.php?url=catalogo`) es la tienda de **Pijamas Harv · Creaciones Decare** y se puede ver sin iniciar sesión.
+- Filtros conectados a MySQL: categoría (Mujer, Hombre, Infantil, Temáticas y ocasiones), talla, precio máximo, búsqueda por nombre/descripción y orden.
+- Cada pijama tiene una ventana de detalle con descripción, talla, unidades disponibles y selector de cantidad. Solo los usuarios con rol `Cliente` pueden agregar al carrito; el precio siempre se toma de la base de datos.
+- El registro de pijamas (`index.php?url=registrar_pijamas`) permite asignar categoría y subir una foto (JPG, PNG o WEBP, máx. 2 MB) que se guarda en `frontend/src/public/uploads/productos/`. Si un producto no tiene foto se muestra la ilustración de su categoría.
+- El nombre y el eslogan de la tienda se configuran en `backend/src/config/marca.php`.
+
+**Actualizar una base de datos ya importada:** ejecutar `database/migracion_catalogo.sql` desde phpMyAdmin (pestaña SQL). Crea la tabla `categorias`, agrega las columnas `ID_CATEGORIA` e `imagen` a `productos` y clasifica los productos existentes. Se puede ejecutar más de una vez. En una instalación nueva basta con importar `database/axioma_bd.sql`, que ya incluye estos cambios.
+
 ## 🔒 Seguridad
 * Autenticación basada en sesiones PHP.
 * Rutas protegidas según el rol: `Cliente`, `Vendedor` y `Administrador`.

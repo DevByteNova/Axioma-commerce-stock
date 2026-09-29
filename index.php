@@ -191,12 +191,13 @@ if ($url === 'procesar_compra_cliente' && $_SERVER['REQUEST_METHOD'] === 'POST')
 }
 
 // Sistema de rutas y matriz de permisos por roles
-$route = isset($_GET['url']) ? $_GET['url'] : 'login';
+$route = isset($_GET['url']) ? $_GET['url'] : 'catalogo';
 $rolActual = $_SESSION['usuario_rol'] ?? '';
 
 // Definir qué roles tienen permiso para cada ruta (Añadido 'Cliente' a su respectivo dashboard)
 $rutasPermitidas = [
     'login'               => ['Invitado', 'Administrador', 'Vendedor', 'Cliente'],
+    'catalogo'            => ['Invitado', 'Administrador', 'Vendedor', 'Cliente'],
     'error'               => ['Invitado', 'Administrador', 'Vendedor', 'Cliente'],
     'registro'            => ['Invitado', 'Administrador', 'Vendedor', 'Cliente'],
     'nuevo_cliente'       => ['Administrador', 'Vendedor'],
@@ -232,27 +233,40 @@ if ($route === 'eliminar_del_carrito' && isset($_GET['id'])) {
 }
 
 if ($route === 'agregar_carrito' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    $id = $_POST['id_producto'] ?? null;
-    $nombre = $_POST['nombre_producto'] ?? 'Producto';
-    $precio = $_POST['precio_producto'] ?? 0;
-    $cantidad = 1;
-
-    if ($id !== null) {
-        if (isset($_SESSION['carrito'][$id])) {
-            $_SESSION['carrito'][$id]['cantidad'] += $cantidad;
-        } else {
-            $_SESSION['carrito'][$id] = [
-                'nombre' => $nombre,
-                'precio' => (float) $precio,
-                'cantidad' => (int) $cantidad,
-            ];
-        }
+    // Solo los clientes compran; el precio y el nombre se leen de la base de datos,
+    // nunca del formulario, para que no puedan alterarse desde el navegador.
+    if ($rolActual !== 'Cliente') {
+        header('Location: index.php?url=login');
+        exit;
     }
 
-    header('Location: index.php?url=ver_carrito');
+    require_once __DIR__ . '/backend/src/conexion.php';
+    require_once __DIR__ . '/backend/src/models/Catalogo.php';
+    $db = new Database();
+    $pdo = $db->getConnection();
+    if (!$pdo) {
+        die("Error de conexión a la BD.");
+    }
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    $id = (int) ($_POST['id_producto'] ?? 0);
+    $cantidad = max(1, (int) ($_POST['cantidad'] ?? 1));
+    $volver = in_array($_POST['volver'] ?? '', ['catalogo', 'cliente_dashboard'], true) ? $_POST['volver'] : '';
+    $producto = $id > 0 ? (new Catalogo($pdo))->obtener($id) : null;
+
+    if (!$producto || (int) $producto['STOCK'] <= 0) {
+        header('Location: index.php?url=' . ($volver ?: 'catalogo') . '&carrito=sin_stock#catalogo');
+        exit;
+    }
+
+    $enCarrito = (int) ($_SESSION['carrito'][$id]['cantidad'] ?? 0);
+    $_SESSION['carrito'][$id] = [
+        'nombre' => $producto['nombre'],
+        'precio' => (float) $producto['PRECIO'],
+        'cantidad' => min($enCarrito + $cantidad, (int) $producto['STOCK']),
+    ];
+
+    header('Location: index.php?url=' . ($volver ? $volver . '&carrito=agregado#catalogo' : 'ver_carrito'));
     exit;
 }
 
@@ -264,8 +278,9 @@ if (!array_key_exists($route, $rutasPermitidas)) {
     exit;
 }
 
-// Validación 2: Si la ruta no es login/registro, exigir autenticación
-if ($route !== 'login' && $route !== 'registro' && $route !== 'error' && !isset($_SESSION['usuario_id'])) {
+// Validación 2: Si la ruta no es pública (login, registro, error o catálogo), exigir autenticación
+$rutasPublicas = ['login', 'registro', 'error', 'catalogo'];
+if (!in_array($route, $rutasPublicas, true) && !isset($_SESSION['usuario_id'])) {
     header('Location: index.php?url=login');
     exit;
 }
@@ -278,7 +293,7 @@ if ($route === 'login' && isset($_SESSION['usuario_id'])) {
 }
 
 // Validación 3: Control de acceso por roles
-if ($route !== 'login' && $route !== 'registro' && $route !== 'error' && !in_array($rolActual, $rutasPermitidas[$route])) {
+if (!in_array($route, $rutasPublicas, true) && !in_array($rolActual, $rutasPermitidas[$route])) {
     http_response_code(403);
     $_GET['error'] = '403';
     require_once __DIR__ . '/frontend/src/pages/error.php';
@@ -289,6 +304,10 @@ if ($route !== 'login' && $route !== 'registro' && $route !== 'error' && !in_arr
 switch ($route) {
     case 'login':
         require_once __DIR__ . '/frontend/src/pages/login.php';
+        break;
+
+    case 'catalogo':
+        require_once __DIR__ . '/frontend/src/pages/catalogo.php';
         break;
 
     case 'error':

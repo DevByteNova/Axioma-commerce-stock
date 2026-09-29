@@ -15,7 +15,7 @@ $db = $database->getConnection();
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Clientes - Axioma</title>
+    <title>Clientes | Pijamas Harv</title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
 </head>

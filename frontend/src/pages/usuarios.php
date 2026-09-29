@@ -11,7 +11,7 @@ if (!isset($_SESSION['usuario_rol']) || !in_array($_SESSION['usuario_rol'], ['Ad
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Axioma | Gestión de Usuarios</title>
+    <title>Gestión de Usuarios | Pijamas Harv</title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
 </head>
@@ -22,7 +22,7 @@ if (!isset($_SESSION['usuario_rol']) || !in_array($_SESSION['usuario_rol'], ['Ad
     <div class="header-actions">
         <div>
             <h1>Personal & Usuarios</h1>
-            <p class="page-description">Listado de cuentas corporativas y administración de accesos del sistema Axioma.</p>
+            <p class="page-description">Listado de cuentas corporativas y administración de accesos del sistema.</p>
         </div>
     </div>
 

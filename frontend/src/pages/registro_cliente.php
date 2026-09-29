@@ -2,7 +2,7 @@
 <html lang="es" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
-    <title>Axioma | Registro de Cliente</title>
+    <title>Registro de Cliente | Pijamas Harv</title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -68,7 +68,7 @@
             msg.style.color = '#92400e';
 
             try {
-                const res = await fetch('/Axioma-Commerce-Stock-suite-main/backend/src/server.php', {
+                const res = await fetch('backend/src/server.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
