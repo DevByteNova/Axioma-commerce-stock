@@ -123,7 +123,7 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Administrador';
                     <label>Desde <input type="date" id="reporte-desde"></label>
                     <label>Hasta <input type="date" id="reporte-hasta"></label>
                     <button type="button" class="btn-accion bg-blue" onclick="cargarReporteVentas()">Filtrar</button>
-                    <a class="btn-accion bg-green" href="./backend/src/server.php?action=exportar_reporte_ventas">Exportar CSV</a>
+                    <a class="btn-accion bg-green" id="exportar-reporte" href="./backend/src/server.php?action=exportar_reporte_ventas">Exportar CSV</a>
                 </div>
                 
                 <table class="tabla-reportes">
@@ -223,8 +223,20 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Administrador';
             });
         }
 
+        function actualizarEnlaceExportacion() {
+            const parametros = new URLSearchParams({action: 'exportar_reporte_ventas'});
+            const desde = document.getElementById('reporte-desde')?.value || '';
+            const hasta = document.getElementById('reporte-hasta')?.value || '';
+            if (desde) parametros.set('desde', desde);
+            if (hasta) parametros.set('hasta', hasta);
+            document.getElementById('exportar-reporte').href = `./backend/src/server.php?${parametros}`;
+        }
+
         // Se ejecuta al cargar el Dashboard
         window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('reporte-desde')?.addEventListener('change', actualizarEnlaceExportacion);
+            document.getElementById('reporte-hasta')?.addEventListener('change', actualizarEnlaceExportacion);
+            actualizarEnlaceExportacion();
             cargarReporteVentas();
         });
     </script>

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 24-09-2026 a las 23:10:19
+-- Tiempo de generación: 30-09-2026 a las 23:34:33
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -20,6 +20,29 @@ SET time_zone = "+00:00";
 --
 -- Base de datos: `axioma_bd`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `categorias`
+--
+
+CREATE TABLE `categorias` (
+  `ID_CATEGORIA` int(11) NOT NULL,
+  `nombre` varchar(60) NOT NULL,
+  `slug` varchar(60) NOT NULL,
+  `descripcion` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `categorias`
+--
+
+INSERT INTO `categorias` (`ID_CATEGORIA`, `nombre`, `slug`, `descripcion`) VALUES
+(1, 'Mujer', 'mujer', 'Pijamas y batas para dama: satín, algodón, franela y encaje.'),
+(2, 'Hombre', 'hombre', 'Pijamas para caballero: conjuntos, franela y térmicas.'),
+(3, 'Infantil', 'infantil', 'Diseños divertidos y cómodos para niñas y niños.'),
+(4, 'Temáticas y ocasiones', 'tematicas', 'Pijamas de temporada, para parejas y fechas especiales.');
 
 -- --------------------------------------------------------
 
@@ -73,38 +96,39 @@ INSERT INTO `clientes` (`ID_CLIENTE`, `NOMBRE`, `APELLIDOS`, `DIRECCION`, `TELEF
 CREATE TABLE `facturas` (
   `ID_FACTURA` int(11) NOT NULL,
   `FECHA` date NOT NULL,
-  `ID_CLIENTE` int(11) NOT NULL
+  `ID_CLIENTE` int(11) NOT NULL,
+  `DIRECCION_ENTREGA` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `facturas`
 --
 
-INSERT INTO `facturas` (`ID_FACTURA`, `FECHA`, `ID_CLIENTE`) VALUES
-(1, '2026-08-07', 1),
-(2, '2026-08-08', 2),
-(3, '2026-08-09', 3),
-(4, '2026-08-10', 4),
-(5, '2026-08-11', 5),
-(6, '2026-08-12', 6),
-(7, '2026-08-13', 7),
-(8, '2026-08-14', 8),
-(9, '2026-08-15', 9),
-(10, '2026-08-16', 10),
-(11, '2026-08-17', 11),
-(12, '2026-08-18', 12),
-(13, '2026-08-19', 13),
-(14, '2026-08-20', 14),
-(15, '2026-08-21', 15),
-(16, '2026-08-22', 16),
-(17, '2026-08-23', 17),
-(18, '2026-08-24', 18),
-(19, '2026-08-25', 19),
-(20, '2026-08-27', 20),
-(21, '2026-08-27', 21),
-(22, '2026-09-24', 21),
-(23, '2026-09-24', 21),
-(24, '2026-09-24', 21);
+INSERT INTO `facturas` (`ID_FACTURA`, `FECHA`, `ID_CLIENTE`, `DIRECCION_ENTREGA`) VALUES
+(1, '2026-08-07', 1, NULL),
+(2, '2026-08-08', 2, NULL),
+(3, '2026-08-09', 3, NULL),
+(4, '2026-08-10', 4, NULL),
+(5, '2026-08-11', 5, NULL),
+(6, '2026-08-12', 6, NULL),
+(7, '2026-08-13', 7, NULL),
+(8, '2026-08-14', 8, NULL),
+(9, '2026-08-15', 9, NULL),
+(10, '2026-08-16', 10, NULL),
+(11, '2026-08-17', 11, NULL),
+(12, '2026-08-18', 12, NULL),
+(13, '2026-08-19', 13, NULL),
+(14, '2026-08-20', 14, NULL),
+(15, '2026-08-21', 15, NULL),
+(16, '2026-08-22', 16, NULL),
+(17, '2026-08-23', 17, NULL),
+(18, '2026-08-24', 18, NULL),
+(19, '2026-08-25', 19, NULL),
+(20, '2026-08-27', 20, NULL),
+(21, '2026-08-27', 21, NULL),
+(22, '2026-09-24', 21, NULL),
+(23, '2026-09-24', 21, NULL),
+(24, '2026-09-24', 21, NULL);
 
 -- --------------------------------------------------------
 
@@ -139,34 +163,36 @@ CREATE TABLE `productos` (
   `DESCRIPCION` varchar(250) NOT NULL,
   `PRECIO` decimal(10,2) NOT NULL,
   `STOCK` int(11) DEFAULT 0,
-  `talla` varchar(50) NOT NULL
+  `talla` varchar(50) NOT NULL,
+  `ID_CATEGORIA` int(11) DEFAULT NULL,
+  `imagen` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `productos`
 --
 
-INSERT INTO `productos` (`ID_PRODUCTO`, `nombre`, `DESCRIPCION`, `PRECIO`, `STOCK`, `talla`) VALUES
-(1, 'Pijama Franela Polar Osito', 'Pijama abrigada de invierno con diseño de osito', 45000.00, 15, 'M'),
-(2, 'Pijama Corta Verano Stripes', 'Pijama fresca de dos piezas para verano', 32000.00, 20, 'S'),
-(3, 'Pijama Elegante Satín Noir', 'Pijama sofisticada de satín negro', 65000.00, 10, 'L'),
-(4, 'Pijama Térmica Antifrío', 'Pijama de alta retención térmica', 55000.00, 12, 'XL'),
-(5, 'Pijama Clásica Algodón Blue', 'Pijama tradicional en suave algodón azul', 38000.00, 25, 'M'),
-(6, 'Pijama Satín Rosa Pastel', 'Conjunto de satín delicado color rosa', 60000.00, 8, 'S'),
-(7, 'Pijama Franela Cuadros Leñador', 'Estilo clásico a cuadros de franela', 48000.00, 14, 'L'),
-(8, 'Pijama Short y Camisola Floral', 'Estampado floral con short cómodo', 35000.00, 18, 'M'),
-(9, 'Pijama Manga Larga Lunar', 'Pijama de manga larga con puntos blancos', 42000.00, 22, 'S'),
-(10, 'Pijama Conjunto 2 Piezas Gray', 'Conjunto cómodo color gris', 40000.00, 30, 'L'),
-(11, 'Pijama Enterizo Unicornio', 'Pijama enteriza con capucha temática', 75000.00, 5, 'M'),
-(12, 'Pijama Maternal Confort', 'Especial para comodidad en etapa maternal', 50000.00, 10, 'L'),
-(13, 'Pijama Infantil Dinosaurios', 'Diseño divertido para niños', 30000.00, 18, 'S'),
-(14, 'Pijama Dúo Pareja King & Queen', 'Pijama combinada para parejas', 95000.00, 7, 'XL'),
-(15, 'Pijama Navideña Reno', 'Motivo especial de temporada navideña', 52000.00, 15, 'M'),
-(16, 'Pijama Estampada Gatos', 'Diseño tierno con estampado de gatos', 36000.00, 19, 'S'),
-(17, 'Pijama Lisa Minimalista', 'Diseño liso de corte sencillo', 34000.00, 25, 'M'),
-(18, 'Pijama Oversize Comfort', 'Corte amplio y holgado para máxima comodidad', 46000.00, 11, 'L'),
-(19, 'Pijama Deluxe Encaje', 'Acabados finos con detalles de encaje', 70000.00, 5, 'S'),
-(20, 'Pijama Básica Algodón Grey', 'Básica de uso diario en algodón', 28000.00, 39, 'M');
+INSERT INTO `productos` (`ID_PRODUCTO`, `nombre`, `DESCRIPCION`, `PRECIO`, `STOCK`, `talla`, `ID_CATEGORIA`, `imagen`) VALUES
+(1, 'Pijama Franela Polar Osito', 'Pijama abrigada de invierno con diseño de osito', 45000.00, 14, 'M', 1, NULL),
+(2, 'Pijama Corta Verano Stripes', 'Pijama fresca de dos piezas para verano', 32000.00, 20, 'S', 1, NULL),
+(3, 'Pijama Elegante Satín Noir', 'Pijama sofisticada de satín negro', 65000.00, 10, 'L', 1, NULL),
+(4, 'Pijama Térmica Antifrío', 'Pijama de alta retención térmica', 55000.00, 12, 'XL', 2, NULL),
+(5, 'Pijama Clásica Algodón Blue', 'Pijama tradicional en suave algodón azul', 38000.00, 25, 'M', 2, NULL),
+(6, 'Pijama Satín Rosa Pastel', 'Conjunto de satín delicado color rosa', 60000.00, 8, 'S', 1, NULL),
+(7, 'Pijama Franela Cuadros Leñador', 'Estilo clásico a cuadros de franela', 48000.00, 14, 'L', 2, NULL),
+(8, 'Pijama Short y Camisola Floral', 'Estampado floral con short cómodo', 35000.00, 18, 'M', 1, NULL),
+(9, 'Pijama Manga Larga Lunar', 'Pijama de manga larga con puntos blancos', 42000.00, 22, 'S', 1, NULL),
+(10, 'Pijama Conjunto 2 Piezas Gray', 'Conjunto cómodo color gris', 40000.00, 30, 'L', 2, NULL),
+(11, 'Pijama Enterizo Unicornio', 'Pijama enteriza con capucha temática', 75000.00, 5, 'M', 4, NULL),
+(12, 'Pijama Maternal Confort', 'Especial para comodidad en etapa maternal', 50000.00, 10, 'L', 1, NULL),
+(13, 'Pijama Infantil Dinosaurios', 'Diseño divertido para niños', 30000.00, 18, 'S', 3, NULL),
+(14, 'Pijama Dúo Pareja King & Queen', 'Pijama combinada para parejas', 95000.00, 7, 'XL', 4, NULL),
+(15, 'Pijama Navideña Reno', 'Motivo especial de temporada navideña', 52000.00, 10, 'M', 4, NULL),
+(16, 'Pijama Estampada Gatos', 'Diseño tierno con estampado de gatos', 36000.00, 19, 'S', 3, NULL),
+(17, 'Pijama Lisa Minimalista', 'Diseño liso de corte sencillo', 34000.00, 25, 'M', 2, NULL),
+(18, 'Pijama Oversize Comfort', 'Corte amplio y holgado para máxima comodidad', 46000.00, 11, 'L', 2, NULL),
+(19, 'Pijama Deluxe Encaje', 'Acabados finos con detalles de encaje', 70000.00, 5, 'S', 1, NULL),
+(20, 'Pijama Básica Algodón Grey', 'Básica de uso diario en algodón', 28000.00, 39, 'M', 2, NULL);
 
 -- --------------------------------------------------------
 
@@ -211,7 +237,7 @@ INSERT INTO `usuarios` (`id`, `usuario`, `email`, `password_hash`, `ID_CLIENTE`,
 (18, 'mariana.p', 'mariana@email.com', 'eb52fc9a4b3a81a2000a9e774d5aa515', 18, NULL, 1, '2026-08-24 20:43:06', 'Cliente'),
 (19, 'felipe.n', 'felipe@email.com', 'eb52fc9a4b3a81a2000a9e774d5aa515', 19, NULL, 1, '2026-08-25 20:43:06', 'Cliente'),
 (20, 'juliana.b', 'juliana@email.com', 'eb52fc9a4b3a81a2000a9e774d5aa515', 20, NULL, 1, '2026-08-27 20:43:06', 'Cliente'),
-(21, 'admin', 'admin@axioma.com', 'eb52fc9a4b3a81a2000a9e774d5aa515', NULL, NULL, 1, '2026-08-27 20:48:30', 'Administrador'),
+(21, 'admin', 'admin@axioma.com', '$2y$10$ptphx2mBrQFGIfetNNSex.AgSmaAtUDqlz.Ulp/ltAm01tQyxHeRW', NULL, NULL, 1, '2026-08-27 20:48:30', 'Administrador'),
 (22, 'carlos.v', 'carlos.v@axioma.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NULL, 1, 1, '2026-08-27 20:49:30', 'Vendedor'),
 (23, 'ana.v', 'ana.v@axioma.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NULL, 2, 1, '2026-08-27 20:49:30', 'Vendedor'),
 (24, 'luis.v', 'luis.v@axioma.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NULL, 3, 1, '2026-08-27 20:49:30', 'Vendedor'),
@@ -219,8 +245,8 @@ INSERT INTO `usuarios` (`id`, `usuario`, `email`, `password_hash`, `ID_CLIENTE`,
 (26, 'jorge.v', 'jorge.v@axioma.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NULL, 5, 1, '2026-08-27 20:49:30', 'Vendedor'),
 (27, 'test_vendedor', 'prueba.v@axioma.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NULL, 21, 1, '2026-08-27 20:55:03', 'Vendedor'),
 (28, 'superadmin', 'super@axioma.com', 'admin123', NULL, NULL, 1, '2026-08-27 20:56:48', 'Administrador'),
-(29, 'vendedor_test', 'vendedor.test@axioma.com', 'vendedor123', NULL, 22, 1, '2026-08-27 20:57:29', 'Vendedor'),
-(30, 'cliente_test', 'cliente.test@email.com', 'cliente123', 21, NULL, 1, '2026-08-27 20:59:26', 'Cliente');
+(29, 'vendedor_test', 'vendedor.test@axioma.com', '$2y$10$pN2qjg87AnxPw1nV/r7FCOofCxadE3VJrHVrjYTcM9zCEWenRhijC', NULL, 22, 1, '2026-08-27 20:57:29', 'Vendedor'),
+(30, 'cliente_test', 'cliente.test@email.com', '$2y$10$0ZnQSMXFkZ3Rz3GJ8eYy4.PcY1QOmE4oHx4fjy/6Ur87vdZsNnPbC', 21, NULL, 1, '2026-08-27 20:59:26', 'Cliente');
 
 -- --------------------------------------------------------
 
@@ -277,43 +303,53 @@ CREATE TABLE `ventas` (
   `FECHA_VENTA` timestamp NOT NULL DEFAULT current_timestamp(),
   `ID_VENDEDOR` int(11) NOT NULL,
   `ID_CLIENTE` int(11) DEFAULT 1,
-  `ID_PAGO` int(11) DEFAULT 1
+  `ID_PAGO` int(11) DEFAULT 1,
+  `estado_pedido` varchar(30) NOT NULL DEFAULT 'Pagado'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `ventas`
 --
 
-INSERT INTO `ventas` (`ID_VENTAS`, `ID_PRODUCTO`, `cantidad`, `total`, `FECHA_VENTA`, `ID_VENDEDOR`, `ID_CLIENTE`, `ID_PAGO`) VALUES
-(1, 1, 2, 90000.00, '2026-08-07 20:42:53', 1, 1, 1),
-(2, 3, 1, 65000.00, '2026-08-08 20:42:53', 2, 2, 2),
-(3, 5, 3, 114000.00, '2026-08-09 20:42:53', 3, 3, 3),
-(4, 2, 1, 32000.00, '2026-08-10 20:42:53', 4, 4, 4),
-(5, 8, 2, 70000.00, '2026-08-11 20:42:53', 5, 5, 5),
-(6, 11, 1, 75000.00, '2026-08-12 20:42:53', 6, 6, 6),
-(7, 14, 1, 95000.00, '2026-08-13 20:42:53', 7, 7, 7),
-(8, 10, 2, 80000.00, '2026-08-14 20:42:53', 8, 8, 8),
-(9, 12, 1, 50000.00, '2026-08-15 20:42:53', 9, 9, 9),
-(10, 15, 2, 104000.00, '2026-08-16 20:42:53', 10, 10, 10),
-(11, 4, 1, 55000.00, '2026-08-17 20:42:53', 11, 11, 1),
-(12, 6, 1, 60000.00, '2026-08-18 20:42:53', 12, 12, 2),
-(13, 7, 2, 96000.00, '2026-08-19 20:42:53', 13, 13, 3),
-(14, 9, 3, 126000.00, '2026-08-20 20:42:53', 14, 14, 4),
-(15, 13, 2, 60000.00, '2026-08-21 20:42:53', 15, 15, 5),
-(16, 16, 1, 36000.00, '2026-08-22 20:42:53', 16, 16, 6),
-(17, 17, 2, 68000.00, '2026-08-23 20:42:53', 17, 17, 7),
-(18, 18, 1, 46000.00, '2026-08-24 20:42:53', 18, 18, 8),
-(19, 19, 1, 70000.00, '2026-08-25 20:42:53', 19, 19, 9),
-(20, 20, 4, 112000.00, '2026-08-27 20:42:53', 20, 20, 10),
-(21, 1, 2, 75000.00, '2026-08-27 21:02:43', 1, 21, 1),
-(22, 19, 1, 70000.00, '2026-09-25 01:41:23', 1, 21, 3),
-(23, 16, 1, 36000.00, '2026-09-25 02:08:02', 1, 21, 1),
-(24, 18, 1, 46000.00, '2026-09-25 02:08:02', 1, 21, 1),
-(25, 20, 1, 28000.00, '2026-09-25 03:46:47', 1, 21, 1);
+INSERT INTO `ventas` (`ID_VENTAS`, `ID_PRODUCTO`, `cantidad`, `total`, `FECHA_VENTA`, `ID_VENDEDOR`, `ID_CLIENTE`, `ID_PAGO`, `estado_pedido`) VALUES
+(1, 1, 2, 90000.00, '2026-08-07 20:42:53', 1, 1, 1, 'Pagado'),
+(2, 3, 1, 65000.00, '2026-08-08 20:42:53', 2, 2, 2, 'Pagado'),
+(3, 5, 3, 114000.00, '2026-08-09 20:42:53', 3, 3, 3, 'Pagado'),
+(4, 2, 1, 32000.00, '2026-08-10 20:42:53', 4, 4, 4, 'Pagado'),
+(5, 8, 2, 70000.00, '2026-08-11 20:42:53', 5, 5, 5, 'Pagado'),
+(6, 11, 1, 75000.00, '2026-08-12 20:42:53', 6, 6, 6, 'Pagado'),
+(7, 14, 1, 95000.00, '2026-08-13 20:42:53', 7, 7, 7, 'Pagado'),
+(8, 10, 2, 80000.00, '2026-08-14 20:42:53', 8, 8, 8, 'Pagado'),
+(9, 12, 1, 50000.00, '2026-08-15 20:42:53', 9, 9, 9, 'Pagado'),
+(10, 15, 2, 104000.00, '2026-08-16 20:42:53', 10, 10, 10, 'Pagado'),
+(11, 4, 1, 55000.00, '2026-08-17 20:42:53', 11, 11, 1, 'Pagado'),
+(12, 6, 1, 60000.00, '2026-08-18 20:42:53', 12, 12, 2, 'Pagado'),
+(13, 7, 2, 96000.00, '2026-08-19 20:42:53', 13, 13, 3, 'Pagado'),
+(14, 9, 3, 126000.00, '2026-08-20 20:42:53', 14, 14, 4, 'Pagado'),
+(15, 13, 2, 60000.00, '2026-08-21 20:42:53', 15, 15, 5, 'Pagado'),
+(16, 16, 1, 36000.00, '2026-08-22 20:42:53', 16, 16, 6, 'Pagado'),
+(17, 17, 2, 68000.00, '2026-08-23 20:42:53', 17, 17, 7, 'Pagado'),
+(18, 18, 1, 46000.00, '2026-08-24 20:42:53', 18, 18, 8, 'Pagado'),
+(19, 19, 1, 70000.00, '2026-08-25 20:42:53', 19, 19, 9, 'Pagado'),
+(20, 20, 4, 112000.00, '2026-08-27 20:42:53', 20, 20, 10, 'Pagado'),
+(21, 1, 2, 75000.00, '2026-08-27 21:02:43', 1, 21, 1, 'Pagado'),
+(22, 19, 1, 70000.00, '2026-09-25 01:41:23', 1, 21, 3, 'Pagado'),
+(23, 16, 1, 36000.00, '2026-09-25 02:08:02', 1, 21, 1, 'Pagado'),
+(24, 18, 1, 46000.00, '2026-09-25 02:08:02', 1, 21, 1, 'Pagado'),
+(25, 20, 1, 28000.00, '2026-09-25 03:46:47', 1, 21, 1, 'Pagado'),
+(26, 15, 5, 260000.00, '2026-09-28 21:17:22', 22, 1, 1, 'Pagado'),
+(27, 1, 1, 45000.00, '2026-09-30 18:49:21', 22, 18, 3, 'Pagado');
 
 --
 -- Índices para tablas volcadas
 --
+
+--
+-- Indices de la tabla `categorias`
+--
+ALTER TABLE `categorias`
+  ADD PRIMARY KEY (`ID_CATEGORIA`),
+  ADD UNIQUE KEY `uq_categoria_slug` (`slug`);
 
 --
 -- Indices de la tabla `clientes`
@@ -338,7 +374,8 @@ ALTER TABLE `metodos_pago`
 -- Indices de la tabla `productos`
 --
 ALTER TABLE `productos`
-  ADD PRIMARY KEY (`ID_PRODUCTO`);
+  ADD PRIMARY KEY (`ID_PRODUCTO`),
+  ADD KEY `fk_producto_categoria` (`ID_CATEGORIA`);
 
 --
 -- Indices de la tabla `usuarios`
@@ -367,6 +404,12 @@ ALTER TABLE `ventas`
 --
 -- AUTO_INCREMENT de las tablas volcadas
 --
+
+--
+-- AUTO_INCREMENT de la tabla `categorias`
+--
+ALTER TABLE `categorias`
+  MODIFY `ID_CATEGORIA` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `clientes`
@@ -408,7 +451,7 @@ ALTER TABLE `vendedor`
 -- AUTO_INCREMENT de la tabla `ventas`
 --
 ALTER TABLE `ventas`
-  MODIFY `ID_VENTAS` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `ID_VENTAS` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- Restricciones para tablas volcadas
@@ -419,6 +462,12 @@ ALTER TABLE `ventas`
 --
 ALTER TABLE `facturas`
   ADD CONSTRAINT `fk_factura_cliente` FOREIGN KEY (`ID_CLIENTE`) REFERENCES `clientes` (`ID_CLIENTE`) ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `productos`
+--
+ALTER TABLE `productos`
+  ADD CONSTRAINT `fk_producto_categoria` FOREIGN KEY (`ID_CATEGORIA`) REFERENCES `categorias` (`ID_CATEGORIA`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `usuarios`
@@ -433,50 +482,6 @@ ALTER TABLE `usuarios`
 ALTER TABLE `ventas`
   ADD CONSTRAINT `fk_ventas_producto` FOREIGN KEY (`ID_PRODUCTO`) REFERENCES `productos` (`ID_PRODUCTO`) ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_ventas_vendedor` FOREIGN KEY (`ID_VENDEDOR`) REFERENCES `vendedor` (`ID_VENDEDOR`) ON UPDATE CASCADE;
-
--- Hashes bcrypt de las cuentas de prueba.
-UPDATE `usuarios` SET `password_hash` = '$2y$10$kqxjv4SX2QMg9y5suD8DMeeHtbuI4VQWpyGdOn/qdtt0xn3k6hk66' WHERE `usuario` = 'admin';
-UPDATE `usuarios` SET `password_hash` = '$2y$10$TstFYJ.X.im8RHTJZjJS2eANYNUlGy8RHaP9l8iIGW12P/xIWMKrS' WHERE `usuario` = 'vendedor_test';
-UPDATE `usuarios` SET `password_hash` = '$2y$10$y3a7FhygEnm.bi/jo/ri5u.wTEwmg0eT6i.ahu3xSOJpUtCHi6Ytm' WHERE `usuario` = 'cliente_test';
-
--- --------------------------------------------------------
--- Catálogo por categorías e imágenes (ver migracion_catalogo.sql)
--- --------------------------------------------------------
-
--- 1. Tabla de categorías
-CREATE TABLE IF NOT EXISTS `categorias` (
-  `ID_CATEGORIA` int(11) NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(60) NOT NULL,
-  `slug` varchar(60) NOT NULL,
-  `descripcion` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`ID_CATEGORIA`),
-  UNIQUE KEY `uq_categoria_slug` (`slug`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-INSERT IGNORE INTO `categorias` (`ID_CATEGORIA`, `nombre`, `slug`, `descripcion`) VALUES
-(1, 'Mujer', 'mujer', 'Pijamas y batas para dama: satín, algodón, franela y encaje.'),
-(2, 'Hombre', 'hombre', 'Pijamas para caballero: conjuntos, franela y térmicas.'),
-(3, 'Infantil', 'infantil', 'Diseños divertidos y cómodos para niñas y niños.'),
-(4, 'Temáticas y ocasiones', 'tematicas', 'Pijamas de temporada, para parejas y fechas especiales.');
-
--- 2. Nuevas columnas en productos
-ALTER TABLE `productos`
-  ADD COLUMN IF NOT EXISTS `ID_CATEGORIA` int(11) DEFAULT NULL AFTER `talla`,
-  ADD COLUMN IF NOT EXISTS `imagen` varchar(255) DEFAULT NULL AFTER `ID_CATEGORIA`;
-
-ALTER TABLE `productos`
-  ADD KEY IF NOT EXISTS `fk_producto_categoria` (`ID_CATEGORIA`);
-
-ALTER TABLE `productos`
-  ADD CONSTRAINT `fk_producto_categoria` FOREIGN KEY IF NOT EXISTS (`ID_CATEGORIA`)
-  REFERENCES `categorias` (`ID_CATEGORIA`) ON DELETE SET NULL ON UPDATE CASCADE;
-
--- 3. Clasificar los productos existentes
-UPDATE `productos` SET `ID_CATEGORIA` = 1 WHERE `ID_PRODUCTO` IN (1, 2, 3, 6, 8, 9, 12, 19) AND `ID_CATEGORIA` IS NULL;
-UPDATE `productos` SET `ID_CATEGORIA` = 2 WHERE `ID_PRODUCTO` IN (4, 5, 7, 10, 17, 18, 20) AND `ID_CATEGORIA` IS NULL;
-UPDATE `productos` SET `ID_CATEGORIA` = 3 WHERE `ID_PRODUCTO` IN (13, 16) AND `ID_CATEGORIA` IS NULL;
-UPDATE `productos` SET `ID_CATEGORIA` = 4 WHERE `ID_PRODUCTO` IN (11, 14, 15) AND `ID_CATEGORIA` IS NULL;
-
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

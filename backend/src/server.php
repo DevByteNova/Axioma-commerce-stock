@@ -2,7 +2,9 @@
 // backend/src/server.php
 
 header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
+if ($_SERVER['REQUEST_METHOD'] !== 'GET' || ($_GET['action'] ?? '') !== 'exportar_reporte_ventas') {
+    header("Content-Type: application/json; charset=UTF-8");
+}
 header("Access-Control-Allow-Methods: POST");
 
 require_once __DIR__ . '/config/db.php';
@@ -296,18 +298,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'exporta
 
     $database = new Database();
     $db = $database->getConnection();
-    $stmt = $db->query("SELECT ved.NOMBRE AS vendedor, COALESCE(SUM(v.total), 0) AS total_vendido
-                        FROM ventas v
-                        INNER JOIN vendedor ved ON v.ID_VENDEDOR = ved.ID_VENDEDOR
-                        GROUP BY ved.ID_VENDEDOR, ved.NOMBRE
-                        ORDER BY total_vendido DESC");
+    $desde = trim((string) ($_GET['desde'] ?? ''));
+    $hasta = trim((string) ($_GET['hasta'] ?? ''));
+    $condicionesFecha = '';
+    $parametrosFecha = [];
+
+    if ($desde !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $desde)) {
+        $condicionesFecha .= ' AND DATE(v.FECHA_VENTA) >= :desde';
+        $parametrosFecha[':desde'] = $desde;
+    }
+    if ($hasta !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $hasta)) {
+        $condicionesFecha .= ' AND DATE(v.FECHA_VENTA) <= :hasta';
+        $parametrosFecha[':hasta'] = $hasta;
+    }
+
+    $query = "SELECT ved.NOMBRE AS vendedor, COALESCE(SUM(v.total), 0) AS total_vendido
+              FROM ventas v
+              INNER JOIN vendedor ved ON v.ID_VENDEDOR = ved.ID_VENDEDOR
+              WHERE 1 = 1 $condicionesFecha
+              GROUP BY ved.ID_VENDEDOR, ved.NOMBRE
+              ORDER BY total_vendido DESC";
+    $stmt = $db->prepare($query);
+    $stmt->execute($parametrosFecha);
 
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="reporte-ventas.csv"');
     $output = fopen('php://output', 'w');
-    fputcsv($output, ['Vendedor', 'Total vendido']);
+    fwrite($output, "\xEF\xBB\xBF");
+    fputcsv($output, ['Vendedor', 'Total vendido (COP)', 'Desde', 'Hasta'], ';');
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        fputcsv($output, [$row['vendedor'], $row['total_vendido']]);
+        fputcsv($output, [$row['vendedor'], $row['total_vendido']], ';');
     }
     fclose($output);
     exit;

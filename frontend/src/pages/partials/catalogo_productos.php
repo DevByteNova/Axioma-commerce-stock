@@ -10,6 +10,14 @@
 require_once __DIR__ . '/../../../../backend/src/config/marca.php';
 require_once __DIR__ . '/../../../../backend/src/models/Catalogo.php';
 
+if (!isset($pdo) || !($pdo instanceof PDO)) {
+    require_once __DIR__ . '/../../../../backend/src/conexion.php';
+    $database = new Database();
+    $pdo = $database->getConnection();
+}
+$rutaCatalogo = $rutaCatalogo ?? 'catalogo';
+$puedeComprar = (bool) ($puedeComprar ?? false);
+
 $catalogo = new Catalogo($pdo);
 $filtros = Catalogo::leerFiltros($_GET);
 

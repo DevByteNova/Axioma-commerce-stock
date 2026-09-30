@@ -33,11 +33,20 @@ $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 ensureEstadoPedidoColumn($conexion);
 
 $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? 1;
+$stmt_cliente = $conexion->prepare('SELECT DIRECCION FROM clientes WHERE ID_CLIENTE = ?');
+$stmt_cliente->execute([$id_cliente]);
+$direccionCliente = (string) ($stmt_cliente->fetchColumn() ?: '');
 
 // 3. Procesar el formulario cuando el cliente hace clic en "Pagar Ahora"
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         header("Location: index.php?url=procesar_compra&error=" . urlencode("La sesión del formulario expiró. Inténtalo de nuevo."));
+        exit();
+    }
+
+    $direccion_entrega = trim((string) ($_POST['direccion_entrega'] ?? ''));
+    if ($direccion_entrega === '' || mb_strlen($direccion_entrega) < 8 || mb_strlen($direccion_entrega) > 255) {
+        header("Location: index.php?url=procesar_compra&error=" . urlencode("Ingresa una dirección de entrega válida (entre 8 y 255 caracteres)."));
         exit();
     }
     
@@ -99,10 +108,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
     $conexion->beginTransaction();
 
     try {
+        ensureDireccionEntregaColumn($conexion);
+        $stmt_direccion = $conexion->prepare('UPDATE clientes SET DIRECCION = ? WHERE ID_CLIENTE = ?');
+        $stmt_direccion->execute([$direccion_entrega, $id_cliente]);
+
         // Registrar cabecera en 'facturas'
-        $sql_factura = "INSERT INTO facturas (FECHA, ID_CLIENTE) VALUES (?, ?)";
+        $sql_factura = "INSERT INTO facturas (FECHA, ID_CLIENTE, DIRECCION_ENTREGA) VALUES (?, ?, ?)";
         $stmt_fac = $conexion->prepare($sql_factura);
-        $stmt_fac->execute([$fecha_solo, $id_cliente]);
+        $stmt_fac->execute([$fecha_solo, $id_cliente, $direccion_entrega]);
         $id_factura_generada = (int) $conexion->lastInsertId();
 
         $estado_pedido = 'Pagado';
@@ -154,6 +167,16 @@ function ensureEstadoPedidoColumn(PDO $conexion): void
 
     if ($stmt->rowCount() === 0) {
         $conexion->exec("ALTER TABLE ventas ADD COLUMN estado_pedido VARCHAR(30) NOT NULL DEFAULT 'Pendiente' AFTER ID_PAGO");
+    }
+}
+
+function ensureDireccionEntregaColumn(PDO $conexion): void
+{
+    $stmt = $conexion->prepare("SHOW COLUMNS FROM facturas LIKE 'DIRECCION_ENTREGA'");
+    $stmt->execute();
+
+    if ($stmt->rowCount() === 0) {
+        $conexion->exec("ALTER TABLE facturas ADD COLUMN DIRECCION_ENTREGA VARCHAR(255) NULL AFTER ID_CLIENTE");
     }
 }
 
@@ -213,6 +236,12 @@ function numeroTarjetaValido(string $numero): bool
 
                     <form action="index.php?url=procesar_compra" method="POST" id="formPago">
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
+
+                        <div class="mb-4">
+                            <label for="direccion_entrega" class="form-label fw-semibold">Dirección de entrega</label>
+                            <textarea name="direccion_entrega" id="direccion_entrega" class="form-control" rows="2" maxlength="255" minlength="8" placeholder="Ej. Calle 10 # 20-30, apartamento 402" autocomplete="street-address" required><?php echo htmlspecialchars($direccionCliente, ENT_QUOTES, 'UTF-8'); ?></textarea>
+                            <div class="form-text">Puedes cambiarla para esta compra. La dirección quedará guardada en tu historial.</div>
+                        </div>
                         
                         <!-- Selector de Método de Pago (Cargado dinámicamente de la BD) -->
                         <div class="mb-4">

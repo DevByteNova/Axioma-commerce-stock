@@ -44,7 +44,6 @@ $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./frontend/src/public/css/catalogo.css">
 
     <style>
         :root {
@@ -406,16 +405,22 @@ $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold text-dark mb-1">Bienvenido, <?php echo htmlspecialchars($nombre_cliente); ?> 🛒</h2>
-                <p class="text-muted mb-0">Gestiona tus compras, consulta el catálogo y revisa tus facturas recientes.</p>
+                <p class="text-muted mb-0">Revisa tus compras, consulta el estado de tus pedidos y descarga tus facturas.</p>
             </div>
         </div>
+
+        <nav class="d-flex flex-wrap gap-2 mb-4" aria-label="Secciones de mi cuenta">
+            <a class="btn btn-marca px-3 py-2" href="#mis-compras">
+                <i class="fa-solid fa-bag-shopping me-1" aria-hidden="true"></i> Mis compras
+            </a>
+        </nav>
 
         <div class="hero-banner">
             <div class="hero-copy">
                 <span class="eyebrow">Colección nueva</span>
                 <h1>Pijamas que te acompañan cada noche</h1>
                 <p>Descubre prendas suaves, modernas y cómodas para dormir con estilo en cada momento del día.</p>
-                <a href="#catalogo" class="btn btn-marca px-3 py-2">Ver catálogo</a>
+                <a href="#mis-compras" class="btn btn-marca px-3 py-2">Ver mis compras</a>
             </div>
 
             <div class="hero-promo">
@@ -430,59 +435,81 @@ $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
             </div>
         </div>
 
-        <!-- Catálogo de Productos (compartido con la tienda pública) -->
-        <div class="card shadow-sm border-0 mb-4 rounded-4">
-            <div class="card-body p-4">
-                <?php
-                $rutaCatalogo = 'cliente_dashboard';
-                $puedeComprar = true;
-                require __DIR__ . '/partials/catalogo_productos.php';
-                ?>
-            </div>
-        </div>
-
         <!-- Historial de Compras del Cliente (Diseño Original) -->
-        <div class="card shadow-sm border-0 mb-4 rounded-4">
+        <div id="mis-compras" class="card shadow-sm border-0 mb-4 rounded-4">
             <div class="card-body p-4">
-                <h4 class="card-title mb-3 fw-bold text-dark">📦 Mis Compras Realizadas</h4>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div>
+                        <span class="text-uppercase small fw-bold text-secondary">Mi actividad</span>
+                        <h4 class="card-title mb-0 fw-bold text-dark">Mis compras</h4>
+                    </div>
+                    <span class="badge rounded-pill bg-light text-dark border">Historial personal</span>
+                </div>
+                <?php
+                $comprasCliente = [];
+                try {
+                    $stmtHistorial = $pdo->prepare("SELECT v.ID_VENTAS, p.nombre AS producto, v.cantidad, v.total,
+                                                            v.FECHA_VENTA, v.estado_pedido
+                                                     FROM ventas v
+                                                     LEFT JOIN productos p ON v.ID_PRODUCTO = p.ID_PRODUCTO
+                                                     WHERE v.ID_CLIENTE = ?
+                                                     ORDER BY v.FECHA_VENTA DESC");
+                    $stmtHistorial->execute([$id_cliente]);
+                    $comprasCliente = $stmtHistorial->fetchAll(PDO::FETCH_ASSOC);
+                } catch (Exception $e) {
+                    $comprasCliente = [];
+                }
+                $totalCompras = count($comprasCliente);
+                $totalUnidades = array_sum(array_map(static fn($compra) => (int) $compra['cantidad'], $comprasCliente));
+                $totalGastado = array_sum(array_map(static fn($compra) => (float) $compra['total'], $comprasCliente));
+                ?>
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-4">
+                        <div class="p-3 rounded-3 bg-light h-100">
+                            <span class="small text-secondary d-block">Compras realizadas</span>
+                            <strong class="fs-4"><?php echo $totalCompras; ?></strong>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="p-3 rounded-3 bg-light h-100">
+                            <span class="small text-secondary d-block">Unidades adquiridas</span>
+                            <strong class="fs-4"><?php echo $totalUnidades; ?></strong>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="p-3 rounded-3 bg-light h-100">
+                            <span class="small text-secondary d-block">Total gastado</span>
+                            <strong class="fs-4 text-success">$<?php echo number_format($totalGastado, 2, ',', '.'); ?></strong>
+                        </div>
+                    </div>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-striped table-hover align-middle">
                         <thead class="table-dark">
                             <tr>
                                 <th># Venta</th>
                                 <th>Producto</th>
+                                <th>Estado</th>
                                 <th>Cantidad</th>
                                 <th>Total</th>
                                 <th>Fecha</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php
-                            try {
-                                $stmtHistorial = $pdo->prepare("SELECT v.ID_VENTAS, p.nombre AS producto, v.cantidad, v.total, v.FECHA_VENTA 
-                                                                FROM ventas v
-                                                                LEFT JOIN productos p ON v.ID_PRODUCTO = p.ID_PRODUCTO
-                                                                WHERE v.ID_CLIENTE = ?
-                                                                ORDER BY v.FECHA_VENTA DESC");
-                                $stmtHistorial->execute([$id_cliente]);
-                                
-                                if ($stmtHistorial->rowCount() > 0) {
-                                    while ($compra = $stmtHistorial->fetch(PDO::FETCH_ASSOC)) {
-                                        echo '<tr>';
-                                        echo '<td class="fw-semibold">#' . $compra['ID_VENTAS'] . '</td>';
-                                        echo '<td>' . htmlspecialchars($compra['producto'] ?? 'Producto no disponible') . '</td>';
-                                        echo '<td><span class="badge bg-secondary">' . $compra['cantidad'] . '</span></td>';
-                                        echo '<td class="fw-bold text-success">$' . number_format($compra['total'], 2) . '</td>';
-                                        echo '<td class="text-muted small">' . $compra['FECHA_VENTA'] . '</td>';
-                                        echo '</tr>';
-                                    }
-                                } else {
-                                    echo '<tr><td colspan="5" class="text-center text-muted py-4">Aún no has realizado ninguna compra en el sistema.</td></tr>';
-                                }
-                            } catch (Exception $e) {
-                                echo '<tr><td colspan="5" class="text-center text-danger py-3">Error al cargar el historial de compras.</td></tr>';
-                            }
-                            ?>
+                            <?php if ($comprasCliente): ?>
+                                <?php foreach ($comprasCliente as $compra): ?>
+                                    <tr>
+                                        <td class="fw-semibold">#<?php echo (int) $compra['ID_VENTAS']; ?></td>
+                                        <td><?php echo htmlspecialchars($compra['producto'] ?? 'Producto no disponible'); ?></td>
+                                        <td><span class="badge rounded-pill bg-primary"><?php echo htmlspecialchars($compra['estado_pedido'] ?? 'Pagado'); ?></span></td>
+                                        <td><span class="badge bg-secondary"><?php echo (int) $compra['cantidad']; ?></span></td>
+                                        <td class="fw-bold text-success">$<?php echo number_format((float) $compra['total'], 2, ',', '.'); ?></td>
+                                        <td class="text-muted small"><?php echo htmlspecialchars($compra['FECHA_VENTA']); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="6" class="text-center text-muted py-4">Aún no has realizado ninguna compra en el sistema.</td></tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
