@@ -11,12 +11,12 @@ class Usuario {
 
     // 1. LOGIN: Buscar por nombre de usuario
     public function buscarPorUsername($username) {
-        $query = "SELECT id, usuario, password_hash, ID_CLIENTE, ID_VENDEDOR, rol FROM usuarios WHERE usuario = :username LIMIT 0,1";
+        $query = "SELECT id, usuario, email, password_hash, ID_CLIENTE, ID_VENDEDOR, rol FROM usuarios WHERE usuario = :username LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":username", $username);
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
-    } // <-- Esta llave cierra correctamente la función buscarPorUsername
+    }
 
     // 2. READ: Obtener todos los usuarios con sus datos vinculados
     public function leerTodos() {

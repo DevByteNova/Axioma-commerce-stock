@@ -30,6 +30,7 @@ if ($documentRoot !== '' && strpos($projectRoot, $documentRoot) === 0) {
 $menuItems = [
     ['route' => 'catalogo', 'label' => 'Catálogo', 'roles' => ['Invitado', 'Administrador', 'Vendedor', 'Cliente'], 'url' => $baseUrl . '/index.php?url=catalogo'],
     ['route' => 'dashboard', 'label' => 'Dashboard', 'roles' => ['Administrador', 'Vendedor'], 'url' => $baseUrl . '/index.php?url=dashboard'],
+    ['route' => 'mi_cuenta', 'label' => 'Mi cuenta', 'roles' => ['Administrador', 'Vendedor', 'Cliente'], 'url' => $baseUrl . '/index.php?url=mi_cuenta'],
     ['route' => 'clientes', 'label' => 'Clientes', 'roles' => ['Administrador', 'Vendedor'], 'url' => $baseUrl . '/index.php?url=clientes'],
     ['route' => 'ver_inventario', 'label' => 'Inventario', 'roles' => ['Administrador', 'Vendedor'], 'url' => $baseUrl . '/index.php?url=ver_inventario'],
     ['route' => 'usuarios', 'label' => 'Usuarios', 'roles' => ['Administrador'], 'url' => $baseUrl . '/index.php?url=usuarios'],

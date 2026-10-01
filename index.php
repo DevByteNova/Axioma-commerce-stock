@@ -206,6 +206,7 @@ $rutasPermitidas = [
     'dashboard'           => ['Administrador', 'Vendedor'],
     'dashboard_cliente'   => ['Cliente'],
     'cliente_dashboard'   => ['Cliente'], // Ruta exclusiva para clientes
+    'mi_cuenta'           => ['Administrador', 'Vendedor', 'Cliente'],
     'clientes'            => ['Administrador', 'Vendedor'],
     'usuarios'            => ['Administrador'],
     'registro_vendedor'   => ['Administrador'],
@@ -327,6 +328,10 @@ switch ($route) {
         } else {
             require_once __DIR__ . '/frontend/src/pages/dashboard.php';
         }
+        break;
+
+    case 'mi_cuenta':
+        require_once __DIR__ . '/frontend/src/pages/mi_cuenta.php';
         break;
 
     case 'dashboard_cliente':

@@ -41,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['ac
             
             $_SESSION['usuario_id'] = $usuarioLogueado['id'];
             $_SESSION['usuario_name'] = $usuarioLogueado['usuario'];
+            $_SESSION['usuario_email'] = $usuarioLogueado['email'] ?? '';
             $_SESSION['id_cliente'] = $usuarioLogueado['ID_CLIENTE'];
             $_SESSION['id_vendedor'] = $usuarioLogueado['ID_VENDEDOR'];
             
@@ -265,7 +266,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['ac
 // MÓDULO: ACTUALIZAR ESTADO DE VENTA
 // ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['action'] === 'actualizar_estado_venta') {
-    if (($_SESSION['usuario_rol'] ?? '') !== 'Administrador' || !verify_csrf_token($data['csrf_token'] ?? null)) {
+    $rolActual = $_SESSION['usuario_rol'] ?? '';
+    if (!in_array($rolActual, ['Administrador', 'Vendedor'], true) || !verify_csrf_token($data['csrf_token'] ?? null)) {
         echo json_encode(["success" => false, "message" => "No autorizado."]);
         exit;
     }
@@ -285,6 +287,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['ac
     if ($stmtColumn->rowCount() === 0) {
         $db->exec("ALTER TABLE ventas ADD COLUMN estado_pedido VARCHAR(30) NOT NULL DEFAULT 'Pendiente' AFTER ID_PAGO");
     }
+
+    if ($rolActual === 'Vendedor') {
+        $idVendedorActual = (int) ($_SESSION['id_vendedor'] ?? 0);
+        $stmtOwner = $db->prepare('SELECT ID_VENDEDOR FROM ventas WHERE ID_VENTAS = :id_venta');
+        $stmtOwner->execute([':id_venta' => $id_venta]);
+        $idVendedorVenta = (int) ($stmtOwner->fetchColumn() ?: 0);
+
+        if ($idVendedorVenta !== $idVendedorActual) {
+            echo json_encode(["success" => false, "message" => "No puedes modificar un pedido que no te pertenece."]);
+            exit;
+        }
+    }
+
     $stmt = $db->prepare('UPDATE ventas SET estado_pedido = :estado WHERE ID_VENTAS = :id_venta');
     $stmt->execute([':estado' => $estado, ':id_venta' => $id_venta]);
     echo json_encode(["success" => true, "message" => "Estado actualizado."]);

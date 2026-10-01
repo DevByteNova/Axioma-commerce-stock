@@ -1,5 +1,5 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
+if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
     session_start();
 }
 
@@ -21,7 +21,46 @@ function ensureEstadoPedidoColumn(PDO $pdo): void
     }
 }
 
+$pdo = null;
+if (!isset($pdo)) {
+    try {
+        $pdo = (new Database())->getConnection();
+    } catch (Exception $e) {
+        $pdo = null;
+    }
+}
+
 $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
+$id_vendedor_actual = (int) ($_SESSION['id_vendedor'] ?? 0);
+$mensaje_estado_pedido = '';
+$estados_pedido = ['Pendiente', 'Pagado', 'Enviado', 'Entregado', 'Cancelado'];
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'actualizar_estado_venta') {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        $mensaje_estado_pedido = 'La sesión del formulario expiró. Inténtalo de nuevo.';
+    } else {
+        $id_venta = filter_var($_POST['id_venta'] ?? null, FILTER_VALIDATE_INT);
+        $nuevo_estado = trim((string) ($_POST['estado'] ?? ''));
+
+        if (!$id_venta || !in_array($nuevo_estado, $estados_pedido, true)) {
+            $mensaje_estado_pedido = 'El estado del pedido no es válido.';
+        } elseif ($pdo) {
+            $stmt_owner = $pdo->prepare('SELECT ID_VENDEDOR FROM ventas WHERE ID_VENTAS = :id_venta');
+            $stmt_owner->execute([':id_venta' => $id_venta]);
+            $vendedor_venta = (int) ($stmt_owner->fetchColumn() ?: 0);
+
+            if ($vendedor_venta !== $id_vendedor_actual) {
+                $mensaje_estado_pedido = 'No puedes modificar un pedido que no te pertenece.';
+            } else {
+                $stmt_update = $pdo->prepare('UPDATE ventas SET estado_pedido = :estado WHERE ID_VENTAS = :id_venta');
+                $stmt_update->execute([':estado' => $nuevo_estado, ':id_venta' => $id_venta]);
+                $mensaje_estado_pedido = 'Pedido actualizado a "' . htmlspecialchars($nuevo_estado, ENT_QUOTES, 'UTF-8') . '".';
+            }
+        } else {
+            $mensaje_estado_pedido = 'No se pudo actualizar el estado porque no hay conexión a la base de datos.';
+        }
+    }
+}
 
 if (!isset($pdo)) {
     try {
@@ -71,6 +110,12 @@ if ($pdo) {
         <?php if (isset($_GET['exito']) && $_GET['exito'] === 'venta_ok'): ?>
             <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
                 <strong>Éxito:</strong> La venta se registró correctamente.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+        <?php endif; ?>
+        <?php if ($mensaje_estado_pedido !== ''): ?>
+            <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
+                <strong>Estado del pedido:</strong> <?php echo $mensaje_estado_pedido; ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
             </div>
         <?php endif; ?>
@@ -236,6 +281,7 @@ if ($pdo) {
                                         <th>Cantidad</th>
                                         <th>Total</th>
                                         <th>Fecha</th>
+                                        <th>Enviar</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -268,22 +314,47 @@ if ($pdo) {
 
                                         if ($queryHistorial && $queryHistorial->rowCount() > 0) {
                                             while ($row = $queryHistorial->fetch(PDO::FETCH_ASSOC)) {
+                                                $estadoActual = (string) ($row['estado_pedido'] ?? 'Pagado');
+                                                $estadoActual = $estadoActual !== '' ? $estadoActual : 'Pagado';
+                                                $badgeClass = match ($estadoActual) {
+                                                    'Pendiente' => 'bg-warning text-dark',
+                                                    'Pagado' => 'bg-primary',
+                                                    'Enviado' => 'bg-info text-dark',
+                                                    'Entregado' => 'bg-success',
+                                                    'Cancelado' => 'bg-danger',
+                                                    default => 'bg-secondary',
+                                                };
+
                                                 echo '<tr>';
                                                 echo '<td>#' . $row['ID_VENTAS'] . '</td>';
                                                 echo '<td>' . htmlspecialchars($row['producto'] ?? 'Desconocido') . '</td>';
                                                 echo '<td>' . htmlspecialchars($row['cliente'] ?? 'General') . '</td>';
                                                 echo '<td><span class="badge bg-secondary">' . htmlspecialchars($row['pago'] ?? 'Efectivo') . '</span></td>';
-                                                echo '<td><span class="badge bg-success">' . htmlspecialchars($row['estado_pedido'] ?? 'Pagado') . '</span></td>';
+                                                echo '<td><span class="badge ' . $badgeClass . '">' . htmlspecialchars($estadoActual) . '</span></td>';
                                                 echo '<td>' . $row['cantidad'] . '</td>';
                                                 echo '<td class="fw-bold text-success">$' . number_format($row['total'], 2) . '</td>';
                                                 echo '<td>' . $row['FECHA_VENTA'] . '</td>';
+                                                echo '<td>';
+                                                echo '<form method="POST" class="d-flex align-items-center gap-2 flex-wrap">';
+                                                echo '<input type="hidden" name="action" value="actualizar_estado_venta">';
+                                                echo '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') . '">';
+                                                echo '<input type="hidden" name="id_venta" value="' . (int) $row['ID_VENTAS'] . '">';
+                                                echo '<select name="estado" class="form-select form-select-sm" aria-label="Estado del pedido">';
+                                                foreach ($estados_pedido as $estado) {
+                                                    $selected = $estado === $estadoActual ? 'selected' : '';
+                                                    echo '<option value="' . htmlspecialchars($estado, ENT_QUOTES, 'UTF-8') . '" ' . $selected . '>' . htmlspecialchars($estado) . '</option>';
+                                                }
+                                                echo '</select>';
+                                                echo '<button type="submit" class="btn btn-sm btn-primary">Guardar</button>';
+                                                echo '</form>';
+                                                echo '</td>';
                                                 echo '</tr>';
                                             }
                                         } else {
-                                            echo '<tr><td colspan="8" class="text-center text-muted py-3">No hay ventas registradas todavía.</td></tr>';
+                                            echo '<tr><td colspan="9" class="text-center text-muted py-3">No hay ventas registradas todavía.</td></tr>';
                                         }
                                     } catch (Exception $e) {
-                                        echo '<tr><td colspan="8" class="text-center text-danger">Error al cargar el historial de ventas: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
+                                        echo '<tr><td colspan="9" class="text-center text-danger">Error al cargar el historial de ventas: ' . htmlspecialchars($e->getMessage()) . '</td></tr>';
                                     }
                                     ?>
                                 </tbody>

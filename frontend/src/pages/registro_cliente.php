@@ -1,71 +1,130 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-slate-50">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro de Cliente | Pijamas Harv</title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f8f9fa 0%, #eef2ff 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+        }
+
+        .form-control, .form-select {
+            border-radius: 0.75rem;
+            padding: 0.8rem 0.9rem;
+            border-color: #dfe3ea;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #5b6cff;
+            box-shadow: 0 0 0 0.2rem rgba(91, 108, 255, 0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+            border: none;
+            border-radius: 0.75rem;
+            padding: 0.8rem 1rem;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
+        }
+
+        .btn-outline-secondary {
+            border-radius: 0.75rem;
+        }
+
+        .alert {
+            border-radius: 0.75rem;
+            font-size: 0.95rem;
+        }
+    </style>
 </head>
-<body class="flex min-h-full flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto w-full max-w-md">
-        <h2 class="mt-6 text-center text-3xl font-bold tracking-tight text-slate-900">Crear cuenta de Cliente</h2>
-        <p class="mt-2 text-center text-sm text-slate-600">Únete a nuestra plataforma comercial</p>
-    </div>
-
-    <div class="mt-8 sm:mx-auto w-full max-w-md">
-        <div class="bg-white px-4 py-8 shadow-sm sm:rounded-lg sm:px-10 border border-slate-200">
-            <form id="registerForm" class="space-y-6">
-                <input type="hidden" id="rol" value="Cliente">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Nombre</label>
-                    <input type="text" id="nombre" required class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Apellidos</label>
-                    <input type="text" id="apellidos" class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Usuario</label>
-                    <input type="text" id="username" required class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Correo Electrónico</label>
-                    <input type="email" id="email" required class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Contraseña</label>
-                    <input type="password" id="password" required class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Dirección</label>
-                    <input type="text" id="direccion" class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2" placeholder="Calle, Ciudad, País">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Teléfono</label>
-                    <input type="text" id="telefono" class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2" placeholder="3001234567">
-                </div>
-
-                <div id="msg" class="hidden text-sm p-3 rounded-md"></div>
-
-                    <div class="registration-actions">
-                        <a href="index.php?url=clientes" class="btn btn-secondary registration-back-link">← Volver a Clientes</a>
-                        <button type="submit" class="w-full bg-slate-900 text-white py-2 rounded-md font-semibold hover:bg-slate-800">Registrarse</button>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="card p-4 p-md-5">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold mb-1">Crear cuenta de Cliente</h2>
+                        <p class="text-muted mb-0">Únete a nuestra plataforma comercial</p>
                     </div>
-            </form>
+
+                    <form id="registerForm" novalidate>
+                        <input type="hidden" id="rol" value="Cliente">
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="nombre" class="form-label">Nombre</label>
+                                <input type="text" id="nombre" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="apellidos" class="form-label">Apellidos</label>
+                                <input type="text" id="apellidos" class="form-control">
+                            </div>
+
+                            <div class="col-12">
+                                <label for="username" class="form-label">Usuario</label>
+                                <input type="text" id="username" class="form-control" required>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="email" class="form-label">Correo Electrónico</label>
+                                <input type="email" id="email" class="form-control" required>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="password" class="form-label">Contraseña</label>
+                                <input type="password" id="password" class="form-control" required>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="direccion" class="form-label">Dirección</label>
+                                <input type="text" id="direccion" class="form-control" placeholder="Calle, Ciudad, País">
+                            </div>
+
+                            <div class="col-12">
+                                <label for="telefono" class="form-label">Teléfono</label>
+                                <input type="text" id="telefono" class="form-control" placeholder="3001234567">
+                            </div>
+                        </div>
+
+                        <div id="msg" class="alert mt-3 d-none" role="alert"></div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">Registrarse</button>
+                            <a href="index.php?url=clientes" class="btn btn-outline-secondary">← Volver a Clientes</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+
             const msg = document.getElementById('msg');
-            msg.classList.remove('hidden');
+            msg.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-warning');
+            msg.classList.add('alert-warning');
             msg.textContent = 'Enviando...';
-            msg.style.background = '#fffbe6';
-            msg.style.color = '#92400e';
 
             try {
                 const res = await fetch('backend/src/server.php', {
@@ -95,24 +154,22 @@
                     data = await res.json();
                 } else {
                     const text = await res.text();
-                    // Mostrar el HTML o texto devuelto para depuración
                     throw new Error('Respuesta no-JSON del servidor: ' + text);
                 }
+
+                msg.classList.remove('alert-warning');
                 msg.textContent = data.message || 'Respuesta recibida.';
-                msg.classList.remove('bg-red-50', 'text-red-600', 'bg-green-50', 'text-green-600');
 
                 if (data.success) {
-                    msg.style.background = '#ecfdf5';
-                    msg.style.color = '#064e3b';
+                    msg.classList.add('alert-success');
                     setTimeout(() => window.location.href = 'index.php?url=login', 1600);
                 } else {
-                    msg.style.background = '#fef2f2';
-                    msg.style.color = '#7f1d1d';
+                    msg.classList.add('alert-danger');
                 }
             } catch (err) {
+                msg.classList.remove('alert-warning');
+                msg.classList.add('alert-danger');
                 msg.textContent = 'Error al enviar: ' + err.message;
-                msg.style.background = '#fef2f2';
-                msg.style.color = '#7f1d1d';
             }
         });
     </script>

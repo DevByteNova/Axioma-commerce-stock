@@ -1,4 +1,5 @@
 <?php
+ob_start();
 
 require_once __DIR__ . '/../backend/src/config/db.php';
 
@@ -34,4 +35,27 @@ assert_true((bool) $stmt->fetch(PDO::FETCH_ASSOC), 'ventas contiene el estado de
 $stmt = $db->query("SELECT COUNT(*) FROM usuarios WHERE password_hash LIKE '\$2y$%'");
 assert_true((int) $stmt->fetchColumn() >= 0, 'la consulta de contraseñas cifradas funciona');
 
+$_SESSION = [
+    'usuario_rol' => 'Vendedor',
+    'usuario_name' => 'Vendendor de prueba',
+    'id_vendedor' => 1,
+];
+ob_start();
+require __DIR__ . '/../frontend/src/pages/dashboard_vendedor.php';
+$html = ob_get_clean();
+assert_true(strpos($html, 'name="estado"') !== false, 'el dashboard del vendedor ofrece cambiar el estado de envío');
+assert_true(strpos($html, 'Guardar') !== false, 'el vendedor puede guardar el cambio del estado');
+
+$_SESSION = [
+    'usuario_rol' => 'Cliente',
+    'usuario_id' => 1,
+    'usuario_email' => 'cliente@prueba.com',
+];
+ob_start();
+require __DIR__ . '/../frontend/src/pages/mi_cuenta.php';
+$htmlPerfil = ob_get_clean();
+assert_true(strpos($htmlPerfil, 'name="email"') !== false, 'la edición de correo está disponible en la cuenta');
+assert_true(strpos($htmlPerfil, 'name="new_password"') !== false, 'la edición de contraseña está disponible en la cuenta');
+
 echo "Smoke tests completados.\n";
+ob_end_flush();
