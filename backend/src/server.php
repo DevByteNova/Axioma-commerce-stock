@@ -36,6 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['ac
     $usuarioLogueado = $usuarioModel->buscarPorUsername($username);
 
     if ($usuarioLogueado) {
+        if (isset($usuarioLogueado['is_active']) && (int) $usuarioLogueado['is_active'] !== 1) {
+            echo json_encode(["success" => false, "message" => "Esta cuenta está deshabilitada."]);
+            exit;
+        }
+
         if (password_verify($password, $usuarioLogueado['password_hash'])) {
             session_regenerate_id(true);
             

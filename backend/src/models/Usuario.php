@@ -11,7 +11,7 @@ class Usuario {
 
     // 1. LOGIN: Buscar por nombre de usuario
     public function buscarPorUsername($username) {
-        $query = "SELECT id, usuario, email, password_hash, ID_CLIENTE, ID_VENDEDOR, rol FROM usuarios WHERE usuario = :username LIMIT 0,1";
+        $query = "SELECT id, usuario, email, password_hash, ID_CLIENTE, ID_VENDEDOR, is_active, rol FROM usuarios WHERE usuario = :username LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":username", $username);
         $stmt->execute();

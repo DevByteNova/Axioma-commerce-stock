@@ -113,6 +113,12 @@ if ($pdo) {
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
             </div>
         <?php endif; ?>
+        <?php if (isset($_GET['error']) && $_GET['error'] !== ''): ?>
+            <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                <?php echo htmlspecialchars((string) $_GET['error'], ENT_QUOTES, 'UTF-8'); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+        <?php endif; ?>
         <?php if ($mensaje_estado_pedido !== ''): ?>
             <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
                 <strong>Estado del pedido:</strong> <?php echo $mensaje_estado_pedido; ?>
@@ -191,7 +197,7 @@ if ($pdo) {
                                                 $stockProd = $prod['STOCK'] ?? 0;
                                                 $precioProd = $prod['PRECIO'] ?? 0;
 
-                                                echo '<option value="' . $id . '">' . htmlspecialchars($nombreProd) . ' - Stock: ' . $stockProd . ' ($' . number_format($precioProd, 2) . ')</option>';
+                                                echo '<option value="' . (int) $id . '" data-precio="' . htmlspecialchars((string) $precioProd, ENT_QUOTES, 'UTF-8') . '" data-stock="' . (int) $stockProd . '">' . htmlspecialchars($nombreProd) . ' - Stock: ' . (int) $stockProd . ' ($' . number_format((float) $precioProd, 2) . ')</option>';
                                             }
                                         }
                                     } catch (Exception $e) {
@@ -209,9 +215,9 @@ if ($pdo) {
                                     $queryCli = null;
                                     try {
                                         if ($pdo) {
-                                            $queryCli = $pdo->query("SELECT ID_CLIENTE, nombre FROM clientes");
+                                            $queryCli = $pdo->query("SELECT ID_CLIENTE, CONCAT(NOMBRE, ' ', APELLIDOS) AS nombre FROM clientes");
                                             while ($cli = $queryCli->fetch(PDO::FETCH_ASSOC)) {
-                                                echo '<option value="' . $cli['ID_CLIENTE'] . '">' . htmlspecialchars($cli['nombre']) . '</option>';
+                                                echo '<option value="' . (int) $cli['ID_CLIENTE'] . '">' . htmlspecialchars($cli['nombre']) . '</option>';
                                             }
                                         } else {
                                             echo '<option value="1">Cliente General</option>';
@@ -227,13 +233,14 @@ if ($pdo) {
                             <div class="mb-3">
                                 <label for="id_pago" class="form-label fw-semibold">Método de Pago:</label>
                                 <select name="id_pago" id="id_pago" class="form-select" required>
+                                    <option value="">Seleccione un método de pago...</option>
                                     <?php
                                     $queryPago = null;
                                     try {
                                         if ($pdo) {
-                                            $queryPago = $pdo->query("SELECT ID_PAGO, nombre_metodo FROM metodos_pago");
+                                            $queryPago = $pdo->query("SELECT ID_PAGO, nombre_metodo FROM metodos_pago WHERE estado = 1 ORDER BY ID_PAGO");
                                             while ($pago = $queryPago->fetch(PDO::FETCH_ASSOC)) {
-                                                echo '<option value="' . $pago['ID_PAGO'] . '">' . htmlspecialchars($pago['nombre_metodo']) . '</option>';
+                                                echo '<option value="' . (int) $pago['ID_PAGO'] . '" data-nombre="' . htmlspecialchars(strtolower($pago['nombre_metodo']), ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($pago['nombre_metodo']) . '</option>';
                                             }
                                         } else {
                                             echo '<option value="1">Efectivo</option>';
@@ -251,8 +258,26 @@ if ($pdo) {
                                 <input type="number" name="cantidad" id="cantidad" class="form-control" value="1" min="1" required>
                             </div>
 
-                            <!-- ID del vendedor actual en sesión -->
-                            <input type="hidden" name="id_vendedor" value="<?php echo $_SESSION['id_vendedor'] ?? 1; ?>">
+                            <div class="card border-primary-subtle bg-light mb-3" aria-live="polite">
+                                <div class="card-body">
+                                    <h5 class="card-title fw-bold">Resumen del pago</h5>
+                                    <div class="d-flex justify-content-between"><span>Subtotal</span><span id="ventaSubtotal">$0,00</span></div>
+                                    <div class="d-flex justify-content-between"><span>IVA (19%)</span><span id="ventaIva">$0,00</span></div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between fw-bold fs-5"><span>Total</span><span id="ventaTotal">$0,00</span></div>
+                                </div>
+                            </div>
+
+                            <div id="recuadroPagoTarjeta" class="card border-primary mb-3" hidden>
+                                <div class="card-body">
+                                    <h5 class="card-title fw-bold text-primary">Pago con tarjeta</h5>
+                                    <p class="mb-2">Procesa el cobro en la terminal externa y registra aquí la referencia solo después de que sea aprobado.</p>
+                                    <div class="mb-2 fw-bold">Total a cobrar: <span id="totalTarjeta">$0,00</span></div>
+                                    <label for="referencia_pago" class="form-label">Referencia de autorización</label>
+                                    <input type="text" name="referencia_pago" id="referencia_pago" class="form-control" maxlength="80" autocomplete="off" placeholder="Código entregado por la terminal" disabled>
+                                    <small class="form-text">No ingreses números de tarjeta ni CVV aquí.</small>
+                                </div>
+                            </div>
 
                             <!-- Botón de envío -->
                             <div class="d-grid mt-4">
@@ -281,7 +306,7 @@ if ($pdo) {
                                         <th>Cantidad</th>
                                         <th>Total</th>
                                         <th>Fecha</th>
-                                        <th>Enviar</th>
+                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -298,7 +323,7 @@ if ($pdo) {
                                             ensureEstadoPedidoColumn($pdo);
                                         }
 
-                                        $sqlHistorial = "SELECT v.ID_VENTAS, p.nombre AS producto, c.nombre AS cliente,
+                                        $sqlHistorial = "SELECT v.ID_VENTAS, p.nombre AS producto, CONCAT_WS(' ', c.NOMBRE, c.APELLIDOS) AS cliente,
                                                             mp.nombre_metodo AS pago, v.estado_pedido, v.cantidad, v.total, v.FECHA_VENTA
                                                      FROM ventas v
                                                      LEFT JOIN productos p ON v.ID_PRODUCTO = p.ID_PRODUCTO
@@ -347,6 +372,7 @@ if ($pdo) {
                                                 echo '</select>';
                                                 echo '<button type="submit" class="btn btn-sm btn-primary">Guardar</button>';
                                                 echo '</form>';
+                                                echo '<a class="btn btn-sm btn-outline-success mt-2" target="_blank" rel="noopener" href="index.php?url=factura_venta&amp;id=' . (int) $row['ID_VENTAS'] . '">Ver / imprimir factura</a>';
                                                 echo '</td>';
                                                 echo '</tr>';
                                             }
@@ -400,5 +426,61 @@ function cargarReporteVentas() {
     })
     .catch(error => console.error("Error de conexión:", error));
 }
+</script>
+<script>
+(() => {
+    const producto = document.getElementById('id_producto');
+    const cantidad = document.getElementById('cantidad');
+    const metodoPago = document.getElementById('id_pago');
+    const resumen = {
+        subtotal: document.getElementById('ventaSubtotal'),
+        iva: document.getElementById('ventaIva'),
+        total: document.getElementById('ventaTotal'),
+        tarjeta: document.getElementById('totalTarjeta')
+    };
+    const recuadroTarjeta = document.getElementById('recuadroPagoTarjeta');
+    const referenciaPago = document.getElementById('referencia_pago');
+    const formatoMoneda = new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    const tarifaIva = 0.19;
+
+    function actualizarResumen() {
+        const opcion = producto.selectedOptions[0];
+        const precio = Number(opcion?.dataset.precio || 0);
+        const unidades = Math.max(0, Number.parseInt(cantidad.value, 10) || 0);
+        const subtotal = Math.round((precio * unidades + Number.EPSILON) * 100) / 100;
+        const iva = Math.round((subtotal * tarifaIva + Number.EPSILON) * 100) / 100;
+        const total = subtotal + iva;
+
+        resumen.subtotal.textContent = formatoMoneda.format(subtotal);
+        resumen.iva.textContent = formatoMoneda.format(iva);
+        resumen.total.textContent = formatoMoneda.format(total);
+        resumen.tarjeta.textContent = formatoMoneda.format(total);
+
+        if (opcion?.dataset.stock) {
+            cantidad.max = opcion.dataset.stock;
+        } else {
+            cantidad.removeAttribute('max');
+        }
+    }
+
+    function actualizarMetodoPago() {
+        const nombreMetodo = metodoPago.selectedOptions[0]?.dataset.nombre || '';
+        const requiereTarjeta = nombreMetodo.includes('tarjeta');
+        recuadroTarjeta.hidden = !requiereTarjeta;
+        referenciaPago.disabled = !requiereTarjeta;
+        referenciaPago.required = requiereTarjeta;
+    }
+
+    producto.addEventListener('change', actualizarResumen);
+    cantidad.addEventListener('input', actualizarResumen);
+    metodoPago.addEventListener('change', actualizarMetodoPago);
+    actualizarResumen();
+    actualizarMetodoPago();
+})();
 </script>
 </html>

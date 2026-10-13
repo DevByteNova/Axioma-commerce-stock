@@ -33,9 +33,8 @@ $menuItems = [
     ['route' => 'mi_cuenta', 'label' => 'Mi cuenta', 'roles' => ['Administrador', 'Vendedor', 'Cliente'], 'url' => $baseUrl . '/index.php?url=mi_cuenta'],
     ['route' => 'clientes', 'label' => 'Clientes', 'roles' => ['Administrador', 'Vendedor'], 'url' => $baseUrl . '/index.php?url=clientes'],
     ['route' => 'ver_inventario', 'label' => 'Inventario', 'roles' => ['Administrador', 'Vendedor'], 'url' => $baseUrl . '/index.php?url=ver_inventario'],
-    ['route' => 'usuarios', 'label' => 'Usuarios', 'roles' => ['Administrador'], 'url' => $baseUrl . '/index.php?url=usuarios'],
+    ['route' => 'usuarios', 'label' => 'Vendedores', 'roles' => ['Administrador'], 'url' => $baseUrl . '/index.php?url=usuarios'],
     ['route' => 'registrar_pijamas', 'label' => 'Registrar Pijamas', 'roles' => ['Administrador', 'Vendedor'], 'url' => $baseUrl . '/index.php?url=registrar_pijamas'],
-    ['route' => 'registro_vendedor', 'label' => 'Registrar Vendedor', 'roles' => ['Administrador'], 'url' => $baseUrl . '/index.php?url=registro_vendedor'],
     ['route' => 'cliente_dashboard', 'label' => 'Mi panel', 'roles' => ['Cliente'], 'url' => $baseUrl . '/index.php?url=cliente_dashboard'],
 ];
 ?>

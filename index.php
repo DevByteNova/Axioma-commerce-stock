@@ -19,6 +19,30 @@ function ensureVentasEstadoPedidoColumn(PDO $pdo): void
     }
 }
 
+function ensureReferenciaPagoColumn(PDO $pdo): void
+{
+    $stmt = $pdo->prepare("SHOW COLUMNS FROM ventas LIKE 'referencia_pago'");
+    $stmt->execute();
+
+    if ($stmt->rowCount() === 0) {
+        $pdo->exec('ALTER TABLE ventas ADD COLUMN referencia_pago VARCHAR(80) NULL AFTER ID_PAGO');
+    }
+}
+
+function ensureDesgloseVentaColumns(PDO $pdo): void
+{
+    foreach ([
+        'subtotal' => 'DECIMAL(10,2) NULL AFTER `cantidad`',
+        'iva' => 'DECIMAL(10,2) NULL AFTER `subtotal`',
+    ] as $column => $definition) {
+        $stmt = $pdo->prepare("SHOW COLUMNS FROM ventas LIKE ?");
+        $stmt->execute([$column]);
+        if ($stmt->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE ventas ADD COLUMN `$column` $definition");
+        }
+    }
+}
+
 // Forzar pantalla de login para depuración: visita index.php?force_login=1
 // HACK: Este bloque es un parche rápido para forzar la pantalla de login
 // durante la depuración. No es una solución final; se deja temporalmente
@@ -60,6 +84,10 @@ error_reporting(E_ALL);
 // 3.1 Manejo de guardar_venta (envío desde el dashboard)
 $url = $_GET['url'] ?? '';
 if ($url === 'guardar_venta' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (($_SESSION['usuario_rol'] ?? '') !== 'Vendedor') {
+        http_response_code(403);
+        exit('No autorizado para registrar una venta manual.');
+    }
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         http_response_code(403);
         exit('Solicitud no válida. Actualiza la página e inténtalo de nuevo.');
@@ -76,45 +104,87 @@ if ($url === 'guardar_venta' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $id_cliente  = intval($_POST['id_cliente'] ?? 1);
     $id_pago     = intval($_POST['id_pago'] ?? 1);
     $cantidad    = intval($_POST['cantidad'] ?? 0);
-    $id_vendedor = intval($_POST['id_vendedor'] ?? ($_SESSION['usuario_id'] ?? 1));
+    $id_vendedor = (int) ($_SESSION['id_vendedor'] ?? 0);
 
-    if ($id_producto > 0 && $cantidad > 0) {
+    if ($id_producto > 0 && $id_cliente > 0 && $id_pago > 0 && $cantidad > 0 && $id_vendedor > 0) {
         try {
             ensureVentasEstadoPedidoColumn($pdo);
-            $stmt = $pdo->prepare("SELECT PRECIO, STOCK FROM productos WHERE ID_PRODUCTO = ?");
+            ensureReferenciaPagoColumn($pdo);
+            ensureDesgloseVentaColumns($pdo);
+            $stmtMetodo = $pdo->prepare("SELECT nombre_metodo FROM metodos_pago WHERE ID_PAGO = ? AND estado = 1");
+            $stmtMetodo->execute([$id_pago]);
+            $nombreMetodo = $stmtMetodo->fetchColumn();
+            if ($nombreMetodo === false) {
+                throw new RuntimeException('El método de pago seleccionado no está disponible.');
+            }
+
+            $esPagoTarjeta = stripos((string) $nombreMetodo, 'tarjeta') !== false;
+            $referenciaPago = trim((string) ($_POST['referencia_pago'] ?? ''));
+            if ($esPagoTarjeta && ($referenciaPago === '' || strlen($referenciaPago) > 80)) {
+                throw new RuntimeException('Ingresa una referencia de autorización válida de la terminal.');
+            }
+
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare("SELECT PRECIO, STOCK FROM productos WHERE ID_PRODUCTO = ? FOR UPDATE");
             $stmt->execute([$id_producto]);
             $producto = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($producto && $producto['STOCK'] >= $cantidad) {
-                $total_venta = $producto['PRECIO'] * $cantidad;
+                $stmtCliente = $pdo->prepare('SELECT 1 FROM clientes WHERE ID_CLIENTE = ?');
+                $stmtCliente->execute([$id_cliente]);
+                if (!$stmtCliente->fetchColumn()) {
+                    throw new RuntimeException('El cliente seleccionado no es válido.');
+                }
 
-                $pdo->beginTransaction();
+                $subtotal = round((float) $producto['PRECIO'] * $cantidad, 2);
+                $iva = round($subtotal * 0.19, 2);
+                $total_venta = $subtotal + $iva;
 
-                $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, estado_pedido, cantidad, total, FECHA_VENTA) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+                $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, referencia_pago, estado_pedido, cantidad, subtotal, iva, total, FECHA_VENTA) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
                 $stmtVenta = $pdo->prepare($sqlVenta);
-                $stmtVenta->execute([$id_producto, $id_vendedor, $id_cliente, $id_pago, 'Pagado', $cantidad, $total_venta]);
+                $stmtVenta->execute([
+                    $id_producto,
+                    $id_vendedor,
+                    $id_cliente,
+                    $id_pago,
+                    $esPagoTarjeta ? $referenciaPago : null,
+                    'Pagado',
+                    $cantidad,
+                    $subtotal,
+                    $iva,
+                    $total_venta
+                ]);
 
-                $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
+                $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ? AND STOCK >= ?";
                 $stmtStock = $pdo->prepare($sqlStock);
-                $stmtStock->execute([$cantidad, $id_producto]);
+                $stmtStock->execute([$cantidad, $id_producto, $cantidad]);
+                if ($stmtStock->rowCount() !== 1) {
+                    throw new RuntimeException('El stock cambió mientras se registraba la venta. Inténtalo de nuevo.');
+                }
 
                 $pdo->commit();
 
-                // Redirigir según el rol del usuario que hizo la venta
-                $redir = ($_SESSION['usuario_rol'] === 'Cliente') ? 'cliente_dashboard' : 'dashboard';
-                header("Location: index.php?url=$redir&exito=venta_ok");
+                header('Location: index.php?url=dashboard&exito=venta_ok');
                 exit();
             } else {
-                die("Error: Stock insuficiente o producto no válido.");
+                throw new RuntimeException('Stock insuficiente o producto no válido.');
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             if ($pdo && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            die("Error al procesar la venta: " . $e->getMessage());
+            error_log('Error al procesar venta manual: ' . $e->getMessage());
+            $mensaje = $e instanceof PDOException
+                ? 'No se pudo procesar la venta. Verifica los datos e inténtalo de nuevo.'
+                : ($e instanceof RuntimeException
+                    ? $e->getMessage()
+                    : 'No se pudo procesar la venta. Verifica los datos e inténtalo de nuevo.');
+            header('Location: index.php?url=dashboard&error=' . urlencode($mensaje));
+            exit();
         }
     } else {
-        die("Error: datos de venta inválidos.");
+        http_response_code(400);
+        exit('Error: datos de venta inválidos.');
     }
 }
 
@@ -204,6 +274,7 @@ $rutasPermitidas = [
     'editar_cliente'      => ['Administrador', 'Vendedor'],
     'eliminar_cliente'    => ['Administrador', 'Vendedor'],
     'dashboard'           => ['Administrador', 'Vendedor'],
+    'factura_venta'       => ['Administrador', 'Vendedor'],
     'dashboard_cliente'   => ['Cliente'],
     'cliente_dashboard'   => ['Cliente'], // Ruta exclusiva para clientes
     'mi_cuenta'           => ['Administrador', 'Vendedor', 'Cliente'],
@@ -330,6 +401,10 @@ switch ($route) {
         }
         break;
 
+    case 'factura_venta':
+        require_once __DIR__ . '/frontend/src/pages/factura_venta.php';
+        break;
+
     case 'mi_cuenta':
         require_once __DIR__ . '/frontend/src/pages/mi_cuenta.php';
         break;
@@ -369,8 +444,8 @@ switch ($route) {
         break;
 
     case 'registro_vendedor':
-        require_once __DIR__ . '/frontend/src/pages/registro_vendedor.php';
-        break;
+        header('Location: index.php?url=usuarios');
+        exit;
 
     case 'inventario':
         require_once __DIR__ . '/frontend/src/pages/inventario.php';

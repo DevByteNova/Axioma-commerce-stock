@@ -52,8 +52,8 @@ $nombre_usuario = $_SESSION['usuario_name'] ?? 'Administrador';
                     📋 Ver Inventario
                 </a>
 
-                <a href="index.php?url=registro_vendedor" class="btn-accion bg-green">
-                    🧑‍💼 Registrar Vendedor
+                <a href="index.php?url=usuarios" class="btn-accion bg-green">
+                    🧑‍💼 Administrar Vendedores
                 </a>
                 <a href="index.php?url=registrar_pijamas" class="btn-accion bg-green">
                     🛏️ Registrar Pijamas

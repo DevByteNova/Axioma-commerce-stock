@@ -16,8 +16,8 @@
 - [X] Programar el flujo del Cliente para visualizar sus compras previas y descargar facturas.
 
 ## 4. Control de Versiones y Despliegue - Opcional
-- [ ] Resolver la autenticación por token en Git (`git push`).
-- [ ] Sincronizar el repositorio remoto con el proyecto local.
+- [X] Resolver la autenticación por token en Git (`git push`).
+- [X] Sincronizar el repositorio remoto con el proyecto local.
 
 ## 5. Mejoras y Seguridad
 - [X] Eliminar contraseñas de respaldo escritas en el código.
