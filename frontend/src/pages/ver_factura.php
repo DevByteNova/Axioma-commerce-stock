@@ -91,7 +91,7 @@ $e = static fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         </div>
 
         <button class="print-btn" onclick="window.print()">Imprimir / Guardar factura</button>
-        <a href="generar_factura.php?id=<?php echo (int) $factura['ID_FACTURA']; ?>" target="_blank" class="btn">
+        <a href="generar_factura.php?id=<?php echo (int) $factura['ID_FACTURA']; ?>" target="_blank" class="invoice-download">
             Descargar factura en PDF
         </a>
     <?php else: ?>

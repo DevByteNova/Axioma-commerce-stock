@@ -1028,6 +1028,8 @@ select:focus-visible {
 .total-section { margin-top: 20px; text-align: right; font-size: 18px; font-weight: 700; }
 .print-btn { width: 100%; margin-top: 20px; padding: 10px; border: 0; border-radius: 5px; background: #007bff; color: #fff; cursor: pointer; }
 .print-btn:hover { background: #0056b3; }
+.invoice-download { display: block; margin-top: 10px; padding: 10px; border: 1px solid var(--secondary-color); border-radius: 5px; color: var(--secondary-deep); text-align: center; font-weight: 600; text-decoration: none; }
+.invoice-download:hover { background: var(--secondary-color); color: #fff; }
 .invoice-error { text-align: center; color: #dc2626; }
 
 .error-page {
@@ -1110,6 +1112,6 @@ select:focus-visible {
 
 @media print {
     .main-header,
-    .print-btn { display: none !important; }
+    .print-btn, .invoice-download { display: none !important; }
     .invoice-box { border: 0; box-shadow: none; }
 }
