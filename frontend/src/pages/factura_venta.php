@@ -147,7 +147,7 @@ $storeCollection = MARCA_COLECCION;
 <main class="sale-invoice">
     <header class="sale-invoice__masthead">
         <div class="sale-invoice__brand">
-            <span class="sale-invoice__brand-mark" aria-hidden="true">H</span>
+            <span class="sale-invoice__brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V10"/><path d="M12 14c-3.5 0-6-2.5-6-6 3.5 0 6 2.5 6 6z"/><path d="M12 12c3.5 0 6-2.5 6-6-3.5 0-6 2.5-6 6z"/><path d="M12 9c-1.4-1.4-1.4-3.6 0-5 1.4 1.4 1.4 3.6 0 5z"/></svg></span>
             <div>
                 <h1 class="sale-invoice__brand-name"><?php echo $escape($storeName); ?></h1>
                 <p class="sale-invoice__brand-subtitle"><?php echo $escape($storeCollection); ?></p>

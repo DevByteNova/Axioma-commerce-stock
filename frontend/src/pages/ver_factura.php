@@ -1,55 +1,38 @@
 <?php
-require_once __DIR__ . '/../../../backend/src/config/env.php';
-
-$conexion = new mysqli(
-    axioma_env('DB_HOST', 'localhost'),
-    axioma_env('DB_USER', 'root'),
-    axioma_env('DB_PASSWORD'),
-    axioma_env('DB_NAME', 'axioma_bd')
-);
-
-if ($conexion->connect_error) {
-    die("Error de conexión: " . $conexion->connect_error);
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-// Obtener el ID de la factura desde la URL (ej: ver_factura.php?id=1)
-$id_factura = isset($_GET['id']) ? intval($_GET['id']) : 1;
+require_once __DIR__ . '/../../../backend/src/conexion.php';
+require_once __DIR__ . '/../../../backend/src/config/marca.php';
+require_once __DIR__ . '/../../../backend/src/models/Factura.php';
 
-// Consulta SQL preparada para obtener los detalles de la factura y la venta relacionada
-$sql = "SELECT 
-            f.ID_FACTURA,
-            f.FECHA AS FECHA_FACTURA,
-            CONCAT(c.NOMBRE, ' ', c.APELLIDOS) AS CLIENTE,
-            c.DIRECCION AS DIRECCION_CLIENTE,
-            c.TELEFONO,
-            c.email AS EMAIL_CLIENTE,
-            p.nombre AS PRODUCTO,
-            p.talla,
-            v.cantidad,
-            p.PRECIO AS PRECIO_UNITARIO,
-            v.total AS SUBTOTAL,
-            mp.nombre_metodo AS METODO_PAGO,
-            ved.NOMBRE AS VENDEDOR
-        FROM facturas f
-        INNER JOIN clientes c ON f.ID_CLIENTE = c.ID_CLIENTE
-        INNER JOIN ventas v ON f.ID_CLIENTE = v.ID_CLIENTE
-        INNER JOIN productos p ON v.ID_PRODUCTO = p.ID_PRODUCTO
-        INNER JOIN metodos_pago mp ON v.ID_PAGO = mp.ID_PAGO
-        INNER JOIN vendedor ved ON v.ID_VENDEDOR = ved.ID_VENDEDOR";
-    $sql .= " WHERE f.ID_FACTURA = ?";
-    $stmt = $conexion->prepare($sql);
-    $stmt->bind_param('i', $id_factura);
-    $stmt->execute();
-    $resultado = $stmt->get_result();
-    $factura = $resultado->fetch_assoc();
+$id_factura = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: 0;
+
+$db = new Database();
+$pdo = $db->getConnection();
+$modelo = new Factura($pdo);
+$factura = $id_factura > 0 ? $modelo->encabezado($id_factura) : null;
+
+if ($factura && !Factura::puedeVer($factura)) {
+    http_response_code(403);
+    $factura = null;
+    $mensajeError = 'No tienes permiso para ver esta factura.';
+}
+$items = $factura ? $modelo->detalle($id_factura) : [];
+$total = array_sum(array_map('floatval', array_column($items, 'total')));
+$metodos = implode(', ', array_unique(array_filter(array_column($items, 'METODO_PAGO'))));
+$vendedores = implode(', ', array_unique(array_filter(array_column($items, 'VENDEDOR'))));
+$e = static fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Factura #<?php echo $id_factura; ?></title>
-    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factura #<?php echo (int) $id_factura; ?> | <?php echo $e(MARCA_TIENDA); ?></title>
+    <link rel="icon" href="../public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../public/css/styles.css">
 </head>
 <body>
@@ -60,21 +43,21 @@ $sql = "SELECT
     <?php if ($factura): ?>
         <div class="invoice-header">
             <div>
-                <h2>Tienda Tecnología / Pijamas</h2>
-                <p>Comprobante de Venta</p>
+                <h2><?php echo $e(MARCA_TIENDA); ?></h2>
+                <p>Comprobante de venta</p>
             </div>
             <div>
-                <p><strong>Factura N°:</strong> #<?php echo $factura['ID_FACTURA']; ?></p>
-                <p><strong>Fecha:</strong> <?php echo $factura['FECHA_FACTURA']; ?></p>
+                <p><strong>Factura N°:</strong> #<?php echo (int) $factura['ID_FACTURA']; ?></p>
+                <p><strong>Fecha:</strong> <?php echo $e($factura['FECHA']); ?></p>
             </div>
         </div>
 
         <div class="details">
-            <p><strong>Cliente:</strong> <?php echo $factura['CLIENTE']; ?></p>
-            <p><strong>Dirección:</strong> <?php echo $factura['DIRECCION_CLIENTE']; ?></p>
-            <p><strong>Teléfono:</strong> <?php echo $factura['TELEFONO']; ?></p>
-            <p><strong>Vendedor que atendió:</strong> <?php echo $factura['VENDEDOR']; ?></p>
-            <p><strong>Método de Pago:</strong> <?php echo $factura['METODO_PAGO']; ?></p>
+            <p><strong>Cliente:</strong> <?php echo $e($factura['CLIENTE']); ?></p>
+            <p><strong>Dirección de entrega:</strong> <?php echo $e($factura['DIRECCION_ENTREGA'] ?: $factura['DIRECCION']); ?></p>
+            <p><strong>Teléfono:</strong> <?php echo $e($factura['TELEFONO']); ?></p>
+            <p><strong>Atendido por:</strong> <?php echo $e($vendedores ?: 'Tienda en línea'); ?></p>
+            <p><strong>Método de pago:</strong> <?php echo $e($metodos ?: 'No registrado'); ?></p>
         </div>
 
         <table>
@@ -83,31 +66,36 @@ $sql = "SELECT
                     <th>Producto</th>
                     <th>Talla</th>
                     <th>Cantidad</th>
-                    <th>Precio Unitario</th>
+                    <th>Precio unitario</th>
                     <th>Subtotal</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td><?php echo $factura['PRODUCTO']; ?></td>
-                    <td><?php echo $factura['talla']; ?></td>
-                    <td><?php echo $factura['cantidad']; ?></td>
-                    <td>$<?php echo number_format($factura['PRECIO_UNITARIO'], 2); ?></td>
-                    <td>$<?php echo number_format($factura['SUBTOTAL'], 2); ?></td>
-                </tr>
+                <?php foreach ($items as $item): ?>
+                    <tr>
+                        <td><?php echo $e($item['PRODUCTO']); ?></td>
+                        <td><?php echo $e($item['talla']); ?></td>
+                        <td><?php echo (int) $item['cantidad']; ?></td>
+                        <td><?php echo precio_cop($item['PRECIO_UNITARIO']); ?></td>
+                        <td><?php echo precio_cop($item['total']); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if (!$items): ?>
+                    <tr><td colspan="5">Esta factura no tiene productos asociados.</td></tr>
+                <?php endif; ?>
             </tbody>
         </table>
 
         <div class="total-section">
-            Total a Pagar: $<?php echo number_format($factura['SUBTOTAL'], 2); ?>
+            Total a pagar: <?php echo precio_cop($total); ?>
         </div>
 
-        <button class="print-btn" onclick="window.print()">Imprimir / Guardar Factura</button>
+        <button class="print-btn" onclick="window.print()">Imprimir / Guardar factura</button>
         <a href="generar_factura.php?id=<?php echo (int) $factura['ID_FACTURA']; ?>" target="_blank" class="btn">
-            Descargar Factura
+            Descargar factura en PDF
         </a>
     <?php else: ?>
-        <p class="invoice-error">No se encontró la factura solicitada.</p>
+        <p class="invoice-error"><?php echo $e($mensajeError ?? 'No se encontró la factura solicitada.'); ?></p>
     <?php endif; ?>
 </div>
 

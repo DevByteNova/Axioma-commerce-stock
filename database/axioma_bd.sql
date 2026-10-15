@@ -176,6 +176,7 @@
     `ID_VENDEDOR` int(11) NOT NULL,
     `ID_CLIENTE` int(11) DEFAULT 1,
     `ID_PAGO` int(11) DEFAULT 1,
+    `ID_FACTURA` int(11) DEFAULT NULL,
     `referencia_pago` varchar(80) DEFAULT NULL,
     `estado_pedido` varchar(30) NOT NULL DEFAULT 'Pagado'
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -241,7 +242,8 @@
     ADD KEY `fk_ventas_producto` (`ID_PRODUCTO`),
     ADD KEY `fk_ventas_vendedor` (`ID_VENDEDOR`),
     ADD KEY `fk_ventas_cliente` (`ID_CLIENTE`),
-    ADD KEY `fk_ventas_pago` (`ID_PAGO`);
+    ADD KEY `fk_ventas_pago` (`ID_PAGO`),
+    ADD KEY `fk_ventas_factura` (`ID_FACTURA`);
 
   --
   -- AUTO_INCREMENT de las tablas volcadas
@@ -325,7 +327,8 @@
     ADD CONSTRAINT `fk_ventas_producto` FOREIGN KEY (`ID_PRODUCTO`) REFERENCES `productos` (`ID_PRODUCTO`) ON UPDATE CASCADE,
     ADD CONSTRAINT `fk_ventas_vendedor` FOREIGN KEY (`ID_VENDEDOR`) REFERENCES `vendedor` (`ID_VENDEDOR`) ON UPDATE CASCADE,
     ADD CONSTRAINT `fk_ventas_cliente` FOREIGN KEY (`ID_CLIENTE`) REFERENCES `clientes` (`ID_CLIENTE`) ON DELETE SET NULL ON UPDATE CASCADE,
-    ADD CONSTRAINT `fk_ventas_pago` FOREIGN KEY (`ID_PAGO`) REFERENCES `metodos_pago` (`ID_PAGO`) ON DELETE SET NULL ON UPDATE CASCADE;
+    ADD CONSTRAINT `fk_ventas_pago` FOREIGN KEY (`ID_PAGO`) REFERENCES `metodos_pago` (`ID_PAGO`) ON DELETE SET NULL ON UPDATE CASCADE,
+    ADD CONSTRAINT `fk_ventas_factura` FOREIGN KEY (`ID_FACTURA`) REFERENCES `facturas` (`ID_FACTURA`) ON DELETE SET NULL ON UPDATE CASCADE;
   --
   -- Datos de referencia: categorías del catálogo (requeridas para registrar pijamas)
   --

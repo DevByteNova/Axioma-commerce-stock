@@ -1,6 +1,11 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__ . '/../../../backend/src/conexion.php';
+require_once __DIR__ . '/../../../backend/src/models/Factura.php';
 
 use Dompdf\Dompdf;
 
@@ -13,24 +18,22 @@ $db = new Database();
 $pdo = $db->getConnection();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$stmt = $pdo->prepare("SELECT f.ID_FACTURA, f.FECHA, CONCAT(c.NOMBRE, ' ', c.APELLIDOS) AS CLIENTE,
-                              p.nombre AS PRODUCTO, v.cantidad, p.PRECIO, v.total
-                       FROM facturas f
-                       INNER JOIN clientes c ON c.ID_CLIENTE = f.ID_CLIENTE
-                       INNER JOIN ventas v ON v.ID_CLIENTE = f.ID_CLIENTE
-                       INNER JOIN productos p ON p.ID_PRODUCTO = v.ID_PRODUCTO
-                       WHERE f.ID_FACTURA = ?");
-$stmt->execute([$id_factura]);
-$items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-if (!$items) {
+$modelo = new Factura($pdo);
+$factura = $modelo->encabezado($id_factura);
+if (!$factura) {
     exit('No se encontró la factura solicitada.');
 }
+if (!Factura::puedeVer($factura)) {
+    http_response_code(403);
+    exit('No tienes permiso para descargar esta factura.');
+}
 
-$factura = $items[0];
-$total_factura = array_sum(array_column($items, 'total'));
+// Solo las ventas que pertenecen a esta factura
+$items = $modelo->detalle($id_factura);
+$total_factura = array_sum(array_map('floatval', array_column($items, 'total')));
 $filas = '';
 foreach ($items as $item) {
-    $filas .= '<tr><td>' . htmlspecialchars($item['PRODUCTO']) . '</td><td>' . (int) $item['cantidad'] . '</td><td>$' . number_format((float) $item['PRECIO'], 2) . '</td><td>$' . number_format((float) $item['total'], 2) . '</td></tr>';
+    $filas .= '<tr><td>' . htmlspecialchars($item['PRODUCTO'] . ' (talla ' . $item['talla'] . ')') . '</td><td>' . (int) $item['cantidad'] . '</td><td>$' . number_format((float) $item['PRECIO_UNITARIO'], 2) . '</td><td>$' . number_format((float) $item['total'], 2) . '</td></tr>';
 }
 
 $dompdf = new Dompdf();
@@ -94,5 +97,5 @@ $dompdf->setPaper('A4', 'portrait');
 // Renderiza el HTML como PDF
 $dompdf->render();
 
-$dompdf->stream("factura_pijamas_harv.pdf", ["Attachment" => true]);
+$dompdf->stream("factura_pijamas_decare.pdf", ["Attachment" => true]);
 ?>

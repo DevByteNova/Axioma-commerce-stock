@@ -135,9 +135,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
 
             $total_linea = $cantidad * $precio_unitario;
 
-            $sql_venta = "INSERT INTO ventas (ID_PRODUCTO, cantidad, total, FECHA_VENTA, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, estado_pedido) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            // Cada venta queda asociada a la factura de esta compra (ventas.ID_FACTURA)
+            $sql_venta = "INSERT INTO ventas (ID_PRODUCTO, cantidad, total, FECHA_VENTA, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, ID_FACTURA, estado_pedido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_venta = $conexion->prepare($sql_venta);
-            $stmt_venta->execute([$id_producto, $cantidad, $total_linea, $fecha_actual, $id_vendedor, $id_cliente, $id_pago, $estado_pedido]);
+            $stmt_venta->execute([$id_producto, $cantidad, $total_linea, $fecha_actual, $id_vendedor, $id_cliente, $id_pago, $id_factura_generada, $estado_pedido]);
 
             $sql_stock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
             $stmt_stock = $conexion->prepare($sql_stock);
