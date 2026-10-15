@@ -155,6 +155,7 @@
   --
 
   INSERT INTO `vendedor` (`ID_VENDEDOR`, `NOMBRE`, `DIRECCION`, `CORREO`) VALUES
+  (1, 'Tienda en línea', 'Gratamira, Bogotá D.C.', 'ventas@pijamasdecare.com'),
   (21, 'Prueba Vendedor', 'Calle Falsa 123', 'prueba.v@axioma.com'),
   (22, 'Vendedor Test', 'Avenida Siempre Viva 456', 'vendedor.test@axioma.com');
 
@@ -238,7 +239,9 @@
   ALTER TABLE `ventas`
     ADD PRIMARY KEY (`ID_VENTAS`),
     ADD KEY `fk_ventas_producto` (`ID_PRODUCTO`),
-    ADD KEY `fk_ventas_vendedor` (`ID_VENDEDOR`);
+    ADD KEY `fk_ventas_vendedor` (`ID_VENDEDOR`),
+    ADD KEY `fk_ventas_cliente` (`ID_CLIENTE`),
+    ADD KEY `fk_ventas_pago` (`ID_PAGO`);
 
   --
   -- AUTO_INCREMENT de las tablas volcadas
@@ -320,7 +323,18 @@
   --
   ALTER TABLE `ventas`
     ADD CONSTRAINT `fk_ventas_producto` FOREIGN KEY (`ID_PRODUCTO`) REFERENCES `productos` (`ID_PRODUCTO`) ON UPDATE CASCADE,
-    ADD CONSTRAINT `fk_ventas_vendedor` FOREIGN KEY (`ID_VENDEDOR`) REFERENCES `vendedor` (`ID_VENDEDOR`) ON UPDATE CASCADE;
+    ADD CONSTRAINT `fk_ventas_vendedor` FOREIGN KEY (`ID_VENDEDOR`) REFERENCES `vendedor` (`ID_VENDEDOR`) ON UPDATE CASCADE,
+    ADD CONSTRAINT `fk_ventas_cliente` FOREIGN KEY (`ID_CLIENTE`) REFERENCES `clientes` (`ID_CLIENTE`) ON DELETE SET NULL ON UPDATE CASCADE,
+    ADD CONSTRAINT `fk_ventas_pago` FOREIGN KEY (`ID_PAGO`) REFERENCES `metodos_pago` (`ID_PAGO`) ON DELETE SET NULL ON UPDATE CASCADE;
+  --
+  -- Datos de referencia: categorías del catálogo (requeridas para registrar pijamas)
+  --
+  INSERT IGNORE INTO `categorias` (`ID_CATEGORIA`, `nombre`, `slug`, `descripcion`) VALUES
+  (1, 'Mujer', 'mujer', 'Pijamas y batas para dama: satín, algodón, franela y encaje.'),
+  (2, 'Hombre', 'hombre', 'Pijamas para caballero: conjuntos, franela y térmicas.'),
+  (3, 'Infantil', 'infantil', 'Diseños divertidos y cómodos para niñas y niños.'),
+  (4, 'Temáticas y ocasiones', 'tematicas', 'Pijamas de temporada, para parejas y fechas especiales.');
+
   COMMIT;
 
   /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

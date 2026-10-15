@@ -1,6 +1,6 @@
 <?php
 /**
- * Dashboard del Cliente - Pijamas Harv · Creaciones Decare
+ * Dashboard del Cliente - Pijamas Decare
  * Diseño Original Restaurado + Carrito en Menú Superior
  * (Mejora visual: tipografía, espaciados, cards, tablas y formularios)
  */
@@ -36,7 +36,7 @@ $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Panel | Pijamas Harv</title>
+    <title>Mi Panel | Pijamas Decare</title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">

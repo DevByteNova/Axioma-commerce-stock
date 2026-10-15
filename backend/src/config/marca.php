@@ -2,8 +2,8 @@
 // backend/src/config/marca.php
 // Identidad de la tienda. Cambiar aquí el nombre se refleja en todo el sitio.
 
-const MARCA_TIENDA = 'Pijamas Harv';
-const MARCA_COLECCION = 'Creaciones Decare';
+const MARCA_TIENDA = 'Pijamas Decare';
+const MARCA_COLECCION = 'Pijamas y ropa exterior';
 const MARCA_ESLOGAN = 'Transforma tus noches con estilo y comodidad';
 const MARCA_INSTAGRAM = 'https://www.instagram.com/creacionesdecare/';
 

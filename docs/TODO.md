@@ -1,4 +1,4 @@
-# Lista de Tareas Pendientes (TODOs) - Sistema Pijamas Harv
+# Lista de Tareas Pendientes (TODOs) - Sistema Pijamas Decare
 
 ## 1. Módulo de Autenticación y Seguridad - Terminado ✔
 - [X] Programar la lógica de inicio de sesión (`login.php`) validando contraseñas cifradas.

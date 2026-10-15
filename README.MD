@@ -55,7 +55,7 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 
 ## 🛍️ Catálogo de pijamas (tienda pública)
 
-- La página de inicio (`index.php` o `index.php?url=catalogo`) es la tienda de **Pijamas Harv · Creaciones Decare** y se puede ver sin iniciar sesión.
+- La página de inicio (`index.php` o `index.php?url=catalogo`) es la tienda de **Pijamas Decare** y se puede ver sin iniciar sesión.
 - Filtros conectados a MySQL: categoría (Mujer, Hombre, Infantil, Temáticas y ocasiones), talla, precio máximo, búsqueda por nombre/descripción y orden.
 - Cada pijama tiene una ventana de detalle con descripción, talla, unidades disponibles y selector de cantidad. Solo los usuarios con rol `Cliente` pueden agregar al carrito; el precio siempre se toma de la base de datos.
 - El registro de pijamas (`index.php?url=registrar_pijamas`) permite asignar categoría y subir una foto (JPG, PNG o WEBP, máx. 2 MB) que se guarda en `frontend/src/public/uploads/productos/`. Si un producto no tiene foto se muestra la ilustración de su categoría.

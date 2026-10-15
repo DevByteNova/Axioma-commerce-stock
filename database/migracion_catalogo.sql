@@ -1,6 +1,6 @@
 -- ============================================================
 -- Migración: catálogo por categorías e imágenes de productos
--- Pijamas Harv · Creaciones Decare
+-- Pijamas Decare
 --
 -- Ejecutar sobre una base Axioma_BD ya importada (phpMyAdmin > SQL).
 -- Es segura de ejecutar más de una vez.

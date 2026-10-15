@@ -54,7 +54,7 @@ $html = '<!DOCTYPE html>
 <body>
 
     <div class="header">
-        <h1>Pijamas Harv</h1>
+        <h1>Pijamas Decare</h1>
         <p>Comprobante de Factura Electrónica</p>
         <p>Fecha: ' . htmlspecialchars($factura['FECHA']) . '</p>
     </div>

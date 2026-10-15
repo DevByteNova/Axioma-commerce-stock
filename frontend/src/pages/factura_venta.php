@@ -72,8 +72,8 @@ $iva = $venta['iva'] !== null
 $escape = static fn($value): string => htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
 $money = static fn($value): string => '$' . number_format((float) $value, 2, ',', '.') . ' COP';
 $dashboardRoute = 'dashboard';
-$storeName = 'Pijamas Harv';
-$storeCollection = 'Creaciones Decare';
+$storeName = 'Pijamas Decare';
+$storeCollection = 'Pijamas y ropa exterior';
 require_once __DIR__ . '/../../../backend/src/config/marca.php';
 $storeName = MARCA_TIENDA;
 $storeCollection = MARCA_COLECCION;
@@ -83,7 +83,7 @@ $storeCollection = MARCA_COLECCION;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comprobante de venta #<?php echo (int) $venta['ID_VENTAS']; ?> | Pijamas Harv</title>
+    <title>Comprobante de venta #<?php echo (int) $venta['ID_VENTAS']; ?> | Pijamas Decare</title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <style>
