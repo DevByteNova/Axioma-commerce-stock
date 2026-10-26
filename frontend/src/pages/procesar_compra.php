@@ -31,11 +31,44 @@ if (!$conexion) {
 
 $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 ensureEstadoPedidoColumn($conexion);
+ensureFacturaVentaColumn($conexion);
 
-$id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? 1;
-$stmt_cliente = $conexion->prepare('SELECT DIRECCION FROM clientes WHERE ID_CLIENTE = ?');
-$stmt_cliente->execute([$id_cliente]);
-$direccionCliente = (string) ($stmt_cliente->fetchColumn() ?: '');
+$stmt_cliente = $conexion->prepare(
+    "SELECT u.ID_CLIENTE, u.email, c.DIRECCION
+     FROM usuarios u
+     LEFT JOIN clientes c ON c.ID_CLIENTE = u.ID_CLIENTE
+     WHERE u.id = ? AND LOWER(TRIM(u.rol)) = 'cliente'"
+);
+$stmt_cliente->execute([(int) $_SESSION['usuario_id']]);
+$cliente = $stmt_cliente->fetch(PDO::FETCH_ASSOC);
+$vincularCliente = false;
+
+if ($cliente && empty($cliente['ID_CLIENTE']) && !empty($cliente['email'])) {
+    $stmt_cliente_email = $conexion->prepare(
+        "SELECT ID_CLIENTE, DIRECCION
+         FROM clientes
+         WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))
+         LIMIT 2"
+    );
+    $stmt_cliente_email->execute([$cliente['email']]);
+    $clientesCoincidentes = $stmt_cliente_email->fetchAll(PDO::FETCH_ASSOC);
+
+    if (count($clientesCoincidentes) === 1) {
+        $cliente = $clientesCoincidentes[0];
+        $vincularCliente = true;
+    } else {
+        $cliente = false;
+    }
+}
+
+if (!$cliente) {
+    http_response_code(409);
+    exit('No encontramos un perfil de cliente único asociado a tu cuenta. Contacta al administrador para vincularlo antes de realizar la compra.');
+}
+
+$id_cliente = (int) $cliente['ID_CLIENTE'];
+$id_usuario = (int) $_SESSION['usuario_id'];
+$direccionCliente = (string) ($cliente['DIRECCION'] ?? '');
 
 // 3. Procesar el formulario cuando el cliente hace clic en "Pagar Ahora"
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
@@ -108,6 +141,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
     $conexion->beginTransaction();
 
     try {
+        if ($vincularCliente) {
+            $stmt_vincular = $conexion->prepare(
+                'UPDATE usuarios SET ID_CLIENTE = ? WHERE id = ? AND ID_CLIENTE IS NULL'
+            );
+            $stmt_vincular->execute([$id_cliente, $id_usuario]);
+
+            if ($stmt_vincular->rowCount() !== 1) {
+                $stmt_cliente_actual = $conexion->prepare(
+                    'SELECT ID_CLIENTE FROM usuarios WHERE id = ? FOR UPDATE'
+                );
+                $stmt_cliente_actual->execute([$id_usuario]);
+                if ((int) $stmt_cliente_actual->fetchColumn() !== $id_cliente) {
+                    throw new RuntimeException('No se pudo vincular el perfil de cliente a tu cuenta.');
+                }
+            }
+
+            $_SESSION['id_cliente'] = $id_cliente;
+        }
+
         ensureDireccionEntregaColumn($conexion);
         $stmt_direccion = $conexion->prepare('UPDATE clientes SET DIRECCION = ? WHERE ID_CLIENTE = ?');
         $stmt_direccion->execute([$direccion_entrega, $id_cliente]);
@@ -168,6 +220,16 @@ function ensureEstadoPedidoColumn(PDO $conexion): void
 
     if ($stmt->rowCount() === 0) {
         $conexion->exec("ALTER TABLE ventas ADD COLUMN estado_pedido VARCHAR(30) NOT NULL DEFAULT 'Pendiente' AFTER ID_PAGO");
+    }
+}
+
+function ensureFacturaVentaColumn(PDO $conexion): void
+{
+    $stmt = $conexion->prepare("SHOW COLUMNS FROM ventas LIKE 'ID_FACTURA'");
+    $stmt->execute();
+
+    if ($stmt->rowCount() === 0) {
+        $conexion->exec('ALTER TABLE ventas ADD COLUMN ID_FACTURA INT(11) DEFAULT NULL AFTER ID_PAGO');
     }
 }
 
