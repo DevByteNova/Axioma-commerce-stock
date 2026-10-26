@@ -100,43 +100,15 @@ body > * {
 .header-brand {
     display: inline-flex;
     align-items: center;
-    gap: 0.75rem;
-    color: #fff;
     text-decoration: none;
-    font-family: var(--font-display);
-    font-size: 1.3rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
+    flex: 0 0 auto;
 }
 
-.header-brand__mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
-    background: var(--secondary-color);
-    color: #ffffff;
-    border: none;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1rem;
-}
-
-.header-brand__texto {
-    display: inline-flex;
-    flex-direction: column;
-    line-height: 1.1;
-}
-
-.header-brand__texto small {
-    font-family: var(--font-body);
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #ffc9ca;
+.header-brand__logo {
+    display: block;
+    width: 280px;
+    max-width: min(280px, 75vw);
+    height: auto;
 }
 
 .nav-menu__link--cta {

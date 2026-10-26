@@ -17,6 +17,11 @@ $info = isset($mensajes[$codigo_error]) ? $mensajes[$codigo_error] : $mensajes['
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Error <?php echo htmlspecialchars($codigo_error, ENT_QUOTES, 'UTF-8'); ?> | Pijamas Decare</title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" sizes="any">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon-32x32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon-16x16.png" type="image/png" sizes="16x16">
+    <link rel="apple-touch-icon" href="./frontend/src/public/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="./frontend/src/public/favicon/site.webmanifest">
     <?php $rutaCss = strpos($_SERVER['SCRIPT_NAME'] ?? '', '/frontend/src/pages/') !== false
         ? '../public/css/styles.css'
         : './frontend/src/public/css/styles.css'; ?>

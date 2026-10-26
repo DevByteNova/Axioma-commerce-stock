@@ -42,15 +42,13 @@ $menuItems = [
 <header class="main-header">
     <div class="header-container">
         <a href="<?php echo htmlspecialchars($baseUrl . '/index.php?url=' . $rutaInicio, ENT_QUOTES, 'UTF-8'); ?>" class="header-brand" aria-label="Ir al inicio">
-            <span class="header-brand__mark" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 21V10"/><path d="M12 14c-3.5 0-6-2.5-6-6 3.5 0 6 2.5 6 6z"/><path d="M12 12c3.5 0 6-2.5 6-6-3.5 0-6 2.5-6 6z"/><path d="M12 9c-1.4-1.4-1.4-3.6 0-5 1.4 1.4 1.4 3.6 0 5z"/>
-                </svg>
-            </span>
-            <span class="header-brand__texto">
-                <?php echo htmlspecialchars(MARCA_TIENDA, ENT_QUOTES, 'UTF-8'); ?>
-                <small><?php echo htmlspecialchars(MARCA_COLECCION, ENT_QUOTES, 'UTF-8'); ?></small>
-            </span>
+            <img
+                class="header-brand__logo"
+                src="<?php echo htmlspecialchars($baseUrl . '/frontend/src/public/img/logo.svg', ENT_QUOTES, 'UTF-8'); ?>"
+                alt="<?php echo htmlspecialchars(MARCA_TIENDA . ' — ' . MARCA_COLECCION, ENT_QUOTES, 'UTF-8'); ?>"
+                width="300"
+                height="64"
+            >
         </a>
 
         <?php if ($rolActual === 'Invitado'): ?>

@@ -42,6 +42,12 @@ $html = '<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" sizes="any">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon-32x32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon-16x16.png" type="image/png" sizes="16x16">
+    <link rel="apple-touch-icon" href="./frontend/src/public/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="./frontend/src/public/favicon/site.webmanifest">
     <style>
         body { font-family: sans-serif; color: #333; margin: 0; padding: 20px; }
         .header { text-align: center; margin-bottom: 30px; }

@@ -111,6 +111,11 @@ if ($emailActual === '' && $pdo) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi cuenta | Pijamas Decare</title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" sizes="any">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon-32x32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon-16x16.png" type="image/png" sizes="16x16">
+    <link rel="apple-touch-icon" href="./frontend/src/public/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="./frontend/src/public/favicon/site.webmanifest">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>

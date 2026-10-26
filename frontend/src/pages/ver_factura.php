@@ -33,6 +33,11 @@ $e = static fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Factura #<?php echo (int) $id_factura; ?> | <?php echo $e(MARCA_TIENDA); ?></title>
     <link rel="icon" href="./frontend/src/public/favicon/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" sizes="any">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon-32x32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon-16x16.png" type="image/png" sizes="16x16">
+    <link rel="apple-touch-icon" href="./frontend/src/public/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="./frontend/src/public/favicon/site.webmanifest">
     <link rel="stylesheet" href="../public/css/styles.css">
 </head>
 <body>

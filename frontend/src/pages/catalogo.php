@@ -28,6 +28,11 @@ $puedeComprar = ($_SESSION['usuario_rol'] ?? '') === 'Cliente';
     <title>Catálogo de pijamas | <?php echo htmlspecialchars(MARCA_TIENDA); ?></title>
     <meta name="description" content="<?php echo htmlspecialchars(MARCA_ESLOGAN); ?>. Pijamas para mujer, hombre, niños y fechas especiales.">
     <link rel="icon" href="./frontend/src/public/favicon/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" sizes="any">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon-32x32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon-16x16.png" type="image/png" sizes="16x16">
+    <link rel="apple-touch-icon" href="./frontend/src/public/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="./frontend/src/public/favicon/site.webmanifest">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
