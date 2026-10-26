@@ -34,7 +34,7 @@ $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
 <head>
     <meta charset="UTF-8">
     <title>Editar Cliente | Pijamas Decare</title>
-    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>

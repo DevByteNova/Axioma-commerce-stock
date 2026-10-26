@@ -16,7 +16,7 @@ $db = $database->getConnection();
 <head>
     <meta charset="UTF-8">
     <title>Clientes | Pijamas Decare</title>
-    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
 </head>
 <body>

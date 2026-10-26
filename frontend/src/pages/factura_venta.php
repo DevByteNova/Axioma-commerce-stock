@@ -84,7 +84,7 @@ $storeCollection = MARCA_COLECCION;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comprobante de venta #<?php echo (int) $venta['ID_VENTAS']; ?> | Pijamas Decare</title>
-    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <style>
         :root { color-scheme: light; --invoice-ink: #30263a; --invoice-muted: #766d7f; --invoice-line: #eee8ef; --invoice-accent: #a84f70; --invoice-soft: #fbf6f8; }

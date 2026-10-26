@@ -10,6 +10,7 @@ if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'Vendedor')
 
 require_once __DIR__ . '/../../../backend/src/conexion.php';
 require_once __DIR__ . '/../../../backend/src/config/security.php';
+require_once __DIR__ . '/../../../backend/src/models/NotificacionVendedor.php';
 
 function ensureEstadoPedidoColumn(PDO $pdo): void
 {
@@ -22,18 +23,49 @@ function ensureEstadoPedidoColumn(PDO $pdo): void
 }
 
 $pdo = null;
-if (!isset($pdo)) {
-    try {
-        $pdo = (new Database())->getConnection();
-    } catch (Exception $e) {
-        $pdo = null;
+$mensaje_error_notificacion = '';
+try {
+    $pdo = (new Database())->getConnection();
+    if ($pdo) {
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    } else {
+        $mensaje_error_notificacion = 'No se pudieron cargar las notificaciones porque no hay conexión a la base de datos.';
     }
+} catch (PDOException $e) {
+    error_log('Error de conexión al cargar notificaciones del vendedor: ' . $e->getMessage());
+    $mensaje_error_notificacion = 'No se pudieron cargar las notificaciones porque no hay conexión a la base de datos.';
 }
-
 $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
 $id_vendedor_actual = (int) ($_SESSION['id_vendedor'] ?? 0);
 $mensaje_estado_pedido = '';
+$mensaje_notificacion = '';
+$notificaciones_pedido = [];
 $estados_pedido = ['Pendiente', 'Pagado', 'Enviado', 'Entregado', 'Cancelado'];
+
+if ($pdo) {
+    try {
+        NotificacionVendedor::asegurarTabla($pdo);
+    } catch (PDOException $e) {
+        error_log('Error al preparar notificaciones de pedidos: ' . $e->getMessage());
+        $mensaje_error_notificacion = 'No se pudieron cargar las notificaciones de pedidos.';
+    }
+}
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'marcar_pedidos_leidos') {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        $mensaje_error_notificacion = 'La sesión del formulario expiró. Actualiza la página e inténtalo de nuevo.';
+    } elseif (!$pdo) {
+        $mensaje_error_notificacion = 'No se pudieron actualizar las notificaciones porque no hay conexión a la base de datos.';
+    } else {
+        try {
+            NotificacionVendedor::marcarLeidas($pdo, $id_vendedor_actual);
+            $mensaje_notificacion = 'Notificaciones marcadas como leídas.';
+        } catch (PDOException $e) {
+            error_log('Error al marcar notificaciones de pedidos como leídas: ' . $e->getMessage());
+            $mensaje_error_notificacion = 'No se pudieron actualizar las notificaciones de pedidos.';
+        }
+    }
+}
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'actualizar_estado_venta') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
@@ -62,11 +94,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') ==
     }
 }
 
-if (!isset($pdo)) {
+if ($pdo && $mensaje_error_notificacion === '') {
     try {
-        $pdo = (new Database())->getConnection();
-    } catch (Exception $e) {
-        $pdo = null;
+        $notificaciones_pedido = NotificacionVendedor::obtenerNoLeidas($pdo, $id_vendedor_actual);
+    } catch (PDOException $e) {
+        error_log('Error al consultar notificaciones de pedidos: ' . $e->getMessage());
+        $mensaje_error_notificacion = 'No se pudieron cargar las notificaciones de pedidos.';
     }
 }
 
@@ -99,7 +132,7 @@ if ($pdo) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Vendedor | Pijamas Decare</title>
-    <link rel="icon" href="./frontend/src/public/favicon/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.svg" type="image/svg+xml">
     <!-- Incluyendo Bootstrap CSS para que los formularios y botones luzcan profesionales -->
     <link rel="stylesheet" href="./frontend/src/public/css/styles.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -124,6 +157,43 @@ if ($pdo) {
                 <strong>Estado del pedido:</strong> <?php echo $mensaje_estado_pedido; ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
             </div>
+        <?php endif; ?>
+        <?php if ($mensaje_error_notificacion !== ''): ?>
+            <div class="alert alert-warning mt-3" role="alert">
+                <?php echo htmlspecialchars($mensaje_error_notificacion, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+        <?php endif; ?>
+        <?php if ($mensaje_notificacion !== ''): ?>
+            <div class="alert alert-success mt-3" role="status">
+                <?php echo htmlspecialchars($mensaje_notificacion, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+        <?php endif; ?>
+        <?php if ($notificaciones_pedido): ?>
+            <section class="alert alert-info mt-3" aria-labelledby="nuevos-pedidos-titulo">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <h2 id="nuevos-pedidos-titulo" class="h5 mb-0">
+                        Nuevo<?php echo count($notificaciones_pedido) === 1 ? '' : 's'; ?> pedido<?php echo count($notificaciones_pedido) === 1 ? '' : 's'; ?>
+                        <span class="badge text-bg-primary"><?php echo count($notificaciones_pedido); ?></span>
+                    </h2>
+                    <form method="post" action="index.php?url=dashboard">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="action" value="marcar_pedidos_leidos">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Marcar como leído</button>
+                    </form>
+                </div>
+                <ul class="list-group">
+                    <?php foreach ($notificaciones_pedido as $notificacion): ?>
+                        <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span>
+                                Pedido #<?php echo (int) $notificacion['ID_FACTURA']; ?>
+                                · <?php echo htmlspecialchars($notificacion['cliente'] ?: 'Cliente', ENT_QUOTES, 'UTF-8'); ?>
+                                · <?php echo (int) $notificacion['lineas_pedido']; ?> producto(s)
+                            </span>
+                            <strong>$<?php echo number_format((float) $notificacion['total_pedido'], 2); ?></strong>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </section>
         <?php endif; ?>
         
         <!-- Tarjeta de bienvenida y accesos rápidos -->

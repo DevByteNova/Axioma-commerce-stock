@@ -22,6 +22,7 @@ if (!isset($_SESSION['carrito']) || empty($_SESSION['carrito'])) {
 
 // Cargar la conexión a la base de datos
 require_once __DIR__ . '/../../../backend/src/conexion.php';
+require_once __DIR__ . '/../../../backend/src/models/NotificacionVendedor.php';
 $db = new Database();
 $conexion = $db->getConnection();
 
@@ -137,6 +138,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
         }
     }
 
+    try {
+        NotificacionVendedor::asegurarTabla($conexion);
+    } catch (PDOException $e) {
+        error_log('Error al preparar notificaciones de pedidos: ' . $e->getMessage());
+        header("Location: index.php?url=procesar_compra&error=" . urlencode("No se pudo preparar el registro del pedido. Inténtalo de nuevo."));
+        exit();
+    }
+
     // Iniciar Transacción SQL para asegurar consistencia (Factura, Ventas y Stock)
     $conexion->beginTransaction();
 
@@ -196,6 +205,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
             $stmt_stock = $conexion->prepare($sql_stock);
             $stmt_stock->execute([$cantidad, $id_producto]);
         }
+
+        NotificacionVendedor::registrarNuevoPedido($conexion, $id_vendedor, $id_factura_generada);
 
         // Confirmar transacción y vaciar carrito
         $conexion->commit();
@@ -269,6 +280,7 @@ function numeroTarjetaValido(string $numero): bool
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finalizar Compra | Pijamas Decare</title>
+    <link rel="icon" href="./frontend/src/public/favicon/favicon.svg" type="image/svg+xml">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
