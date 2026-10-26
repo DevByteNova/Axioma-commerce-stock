@@ -2,14 +2,14 @@
 
 Sistema web de comercio y gestión de inventario para la administración de productos, clientes, vendedores, carrito de compras, pagos y facturación.
 
-## 🛠️ Tecnologías y Configuración
+## Tecnologías y Configuración
 * **Lenguaje:** PHP 8+
 * **Base de datos:** MySQL/MariaDB mediante PDO
 * **Interfaz:** PHP, HTML, Bootstrap 5 y Font Awesome
 * **Facturación:** Dompdf para generar facturas en PDF
 * **Arquitectura:** `frontend/` contiene las vistas y `backend/` contiene la conexión, controladores y modelos
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
  Axioma-commerce-stock/
 ├── backend/                 # Conexión, controladores y modelos
@@ -21,7 +21,7 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 └── vendor/                  # Dependencias instaladas
 
 
-## 🚀 Guía de Implementación
+## Guía de Implementación
 1. Inicia **Apache** y **MySQL** desde XAMPP.
 2. Crea o importa la base de datos usando `database/axioma_bd.sql` desde phpMyAdmin.
 3. Crea la configuración local desde la plantilla:
@@ -53,7 +53,7 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 
 > El archivo SQL aparece como `axioma_bd`. En instalaciones Windows normalmente no hay diferencia entre mayúsculas y minúsculas, pero conviene usar el mismo nombre configurado en `conexion.php`.
 
-## 🛍️ Catálogo de pijamas (tienda pública)
+## Catálogo de pijamas (tienda pública)
 
 - La página de inicio (`index.php` o `index.php?url=catalogo`) es la tienda de **Pijamas Decare** y se puede ver sin iniciar sesión.
 - Filtros conectados a MySQL: categoría (Mujer, Hombre, Infantil, Temáticas y ocasiones), talla, precio máximo, búsqueda por nombre/descripción y orden.
@@ -63,7 +63,7 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 
 **Actualizar una base de datos ya importada:** ejecutar `database/migracion_catalogo.sql` desde phpMyAdmin (pestaña SQL). Crea la tabla `categorias`, agrega las columnas `ID_CATEGORIA` e `imagen` a `productos` y clasifica los productos existentes. Se puede ejecutar más de una vez. En una instalación nueva basta con importar `database/axioma_bd.sql`, que ya incluye estos cambios.
 
-## 🔒 Seguridad
+## Seguridad
 * Autenticación basada en sesiones PHP.
 * Rutas protegidas según el rol: `Cliente`, `Vendedor` y `Administrador`.
 * El checkout y las operaciones principales usan PDO y consultas preparadas.
@@ -75,13 +75,13 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 ---
 *Desarrollado como proyecto académico.*
 
-## 📝 Cambios recientes y notas de ejecución
+## Cambios recientes y notas de ejecución
 
 - Se añadieron helpers y scripts locales en la carpeta `tools/` (ej.: pruebas de login y simulación de compra). **No se deben subir**; la carpeta `tools/` está ahora en `.gitignore`.
 - Se eliminó una marca visual (watermark) desde `frontend/src/public/css/styles.css`.
 - Debug rápido: puedes forzar la pantalla de login con `index.php?force_login=1` (parche temporal para depuración).
 
-## 🔧 Puntos importantes para desarrolladores
+## Puntos importantes para desarrolladores
 
 - Ruta de enrutamiento central: `index.php` — controla vistas y acciones por `?url=...`.
 - Login por AJAX: el servidor devuelve JSON con `rol`, `id_cliente`, `id_vendedor` y `destino`. El frontend espera `destino` para redirigir correctamente.
@@ -108,7 +108,7 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 
 > Actualmente `ventas` no tiene una columna `ID_FACTURA`; las facturas relacionan las ventas mediante el cliente. Para separar estrictamente los productos de cada factura, se debe agregar esa relación en la base de datos.
 
-## 🧪 Credenciales de prueba
+##  Credenciales de prueba
 
 - Usa un usuario con rol `Cliente` creado en la base de datos para probar el flujo.
 - El SQL de ejemplo incluye usuarios de prueba, pero sus contraseñas dependen de los datos importados y de la lógica de autenticación vigente.
