@@ -485,6 +485,31 @@ ALTER TABLE `usuarios`
 ALTER TABLE `ventas`
   ADD CONSTRAINT `fk_ventas_producto` FOREIGN KEY (`ID_PRODUCTO`) REFERENCES `productos` (`ID_PRODUCTO`) ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_ventas_vendedor` FOREIGN KEY (`ID_VENDEDOR`) REFERENCES `vendedor` (`ID_VENDEDOR`) ON UPDATE CASCADE;
+
+--
+-- Integridad de las ventas de ejemplo: solo existen los métodos de pago 1, 2 y 3
+--
+UPDATE `ventas` SET `ID_PAGO` = ((`ID_PAGO` - 1) % 3) + 1 WHERE `ID_PAGO` > 3;
+
+--
+-- Asociar las ventas de ejemplo con su factura (mismo cliente y misma fecha)
+--
+UPDATE `ventas` v
+JOIN (SELECT ID_CLIENTE, FECHA, MAX(ID_FACTURA) AS ID_FACTURA FROM `facturas` GROUP BY ID_CLIENTE, FECHA) f
+  ON f.ID_CLIENTE = v.ID_CLIENTE AND f.FECHA = DATE(v.FECHA_VENTA)
+SET v.ID_FACTURA = f.ID_FACTURA
+WHERE v.ID_FACTURA IS NULL;
+
+--
+-- Relaciones de ventas con clientes, métodos de pago y facturas
+--
+ALTER TABLE `ventas`
+  ADD KEY `fk_ventas_cliente` (`ID_CLIENTE`),
+  ADD KEY `fk_ventas_pago` (`ID_PAGO`),
+  ADD KEY `fk_ventas_factura` (`ID_FACTURA`),
+  ADD CONSTRAINT `fk_ventas_cliente` FOREIGN KEY (`ID_CLIENTE`) REFERENCES `clientes` (`ID_CLIENTE`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_ventas_pago` FOREIGN KEY (`ID_PAGO`) REFERENCES `metodos_pago` (`ID_PAGO`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_ventas_factura` FOREIGN KEY (`ID_FACTURA`) REFERENCES `facturas` (`ID_FACTURA`) ON DELETE SET NULL ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
