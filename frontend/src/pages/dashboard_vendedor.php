@@ -23,17 +23,18 @@ function ensureEstadoPedidoColumn(PDO $pdo): void
 }
 
 $pdo = null;
+$mensaje_error_dashboard = '';
 $mensaje_error_notificacion = '';
 try {
     $pdo = (new Database())->getConnection();
     if ($pdo) {
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     } else {
-        $mensaje_error_notificacion = 'No se pudieron cargar las notificaciones porque no hay conexión a la base de datos.';
+        $mensaje_error_dashboard = 'No se pudieron cargar los datos del vendedor porque no hay conexión a la base de datos.';
     }
 } catch (PDOException $e) {
-    error_log('Error de conexión al cargar notificaciones del vendedor: ' . $e->getMessage());
-    $mensaje_error_notificacion = 'No se pudieron cargar las notificaciones porque no hay conexión a la base de datos.';
+    error_log('Error de conexión al cargar el dashboard del vendedor: ' . $e->getMessage());
+    $mensaje_error_dashboard = 'No se pudieron cargar los datos del vendedor porque no hay conexión a la base de datos.';
 }
 $nombre_usuario = $_SESSION['usuario_name'] ?? 'Vendedor';
 $id_vendedor_actual = (int) ($_SESSION['id_vendedor'] ?? 0);
@@ -42,25 +43,14 @@ $mensaje_notificacion = '';
 $notificaciones_pedido = [];
 $estados_pedido = ['Pendiente', 'Pagado', 'Enviado', 'Entregado', 'Cancelado'];
 
-if ($pdo) {
-    try {
-        NotificacionVendedor::asegurarTabla($pdo);
-    } catch (PDOException $e) {
-        error_log('Error al preparar notificaciones de pedidos: ' . $e->getMessage());
-        $mensaje_error_notificacion = 'No se pudieron cargar las notificaciones de pedidos.';
-    }
-}
-
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'marcar_pedidos_leidos') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $mensaje_error_notificacion = 'La sesión del formulario expiró. Actualiza la página e inténtalo de nuevo.';
-    } elseif (!$pdo) {
-        $mensaje_error_notificacion = 'No se pudieron actualizar las notificaciones porque no hay conexión a la base de datos.';
     } else {
         try {
-            NotificacionVendedor::marcarLeidas($pdo, $id_vendedor_actual);
+            NotificacionVendedor::marcarLeidas($id_vendedor_actual);
             $mensaje_notificacion = 'Notificaciones marcadas como leídas.';
-        } catch (PDOException $e) {
+        } catch (Throwable $e) {
             error_log('Error al marcar notificaciones de pedidos como leídas: ' . $e->getMessage());
             $mensaje_error_notificacion = 'No se pudieron actualizar las notificaciones de pedidos.';
         }
@@ -94,13 +84,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') ==
     }
 }
 
-if ($pdo && $mensaje_error_notificacion === '') {
-    try {
-        $notificaciones_pedido = NotificacionVendedor::obtenerNoLeidas($pdo, $id_vendedor_actual);
-    } catch (PDOException $e) {
-        error_log('Error al consultar notificaciones de pedidos: ' . $e->getMessage());
-        $mensaje_error_notificacion = 'No se pudieron cargar las notificaciones de pedidos.';
-    }
+try {
+    $notificaciones_pedido = NotificacionVendedor::obtenerNoLeidas($id_vendedor_actual);
+} catch (Throwable $e) {
+    error_log('Error al consultar notificaciones de pedidos: ' . $e->getMessage());
+    $mensaje_error_notificacion = 'No se pudieron cargar las notificaciones de pedidos.';
 }
 
 $resumen_ventas = [
@@ -161,6 +149,11 @@ if ($pdo) {
             <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
                 <strong>Estado del pedido:</strong> <?php echo $mensaje_estado_pedido; ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+        <?php endif; ?>
+        <?php if ($mensaje_error_dashboard !== ''): ?>
+            <div class="alert alert-warning mt-3" role="alert">
+                <?php echo htmlspecialchars($mensaje_error_dashboard, ENT_QUOTES, 'UTF-8'); ?>
             </div>
         <?php endif; ?>
         <?php if ($mensaje_error_notificacion !== ''): ?>

@@ -3,59 +3,122 @@
 
 class NotificacionVendedor
 {
-    public static function asegurarTabla(PDO $pdo): void
+    private static function rutaArchivo(int $idVendedor): string
     {
-        $pdo->exec(
-            "CREATE TABLE IF NOT EXISTS notificaciones_vendedor (
-                ID_NOTIFICACION BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                ID_VENDEDOR INT NOT NULL,
-                ID_FACTURA INT NOT NULL,
-                FECHA_CREACION TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                LEIDA_EN TIMESTAMP NULL DEFAULT NULL,
-                PRIMARY KEY (ID_NOTIFICACION),
-                UNIQUE KEY uq_notificacion_vendedor_factura (ID_VENDEDOR, ID_FACTURA),
-                KEY idx_notificacion_vendedor_leida (ID_VENDEDOR, LEIDA_EN, FECHA_CREACION)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-        );
+        if ($idVendedor < 1) {
+            throw new InvalidArgumentException('El vendedor de la notificación no es válido.');
+        }
+
+        return dirname(__DIR__, 2) . '/storage/notificaciones_vendedor/' . $idVendedor . '.json';
     }
 
-    public static function registrarNuevoPedido(PDO $pdo, int $idVendedor, int $idFactura): void
+    private static function actualizarArchivo(int $idVendedor, callable $actualizar)
     {
-        $stmt = $pdo->prepare(
-            'INSERT INTO notificaciones_vendedor (ID_VENDEDOR, ID_FACTURA) VALUES (?, ?)'
-        );
-        $stmt->execute([$idVendedor, $idFactura]);
+        $ruta = self::rutaArchivo($idVendedor);
+        $directorio = dirname($ruta);
+
+        if (!is_dir($directorio) && !mkdir($directorio, 0770, true) && !is_dir($directorio)) {
+            throw new RuntimeException('No se pudo crear el almacenamiento de notificaciones.');
+        }
+
+        $archivo = fopen($ruta, 'c+');
+        if ($archivo === false) {
+            throw new RuntimeException('No se pudo abrir el almacenamiento de notificaciones.');
+        }
+
+        $bloqueado = false;
+        try {
+            if (!flock($archivo, LOCK_EX)) {
+                throw new RuntimeException('No se pudo bloquear el almacenamiento de notificaciones.');
+            }
+            $bloqueado = true;
+
+            rewind($archivo);
+            $contenido = stream_get_contents($archivo);
+            if ($contenido === false) {
+                throw new RuntimeException('No se pudieron leer las notificaciones del vendedor.');
+            }
+
+            $notificaciones = $contenido === ''
+                ? []
+                : json_decode($contenido, true, 512, JSON_THROW_ON_ERROR);
+            if (!is_array($notificaciones)) {
+                throw new RuntimeException('El almacenamiento de notificaciones contiene datos no válidos.');
+            }
+
+            $resultado = $actualizar($notificaciones);
+            $json = json_encode(array_values($notificaciones), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+
+            rewind($archivo);
+            if (!ftruncate($archivo, 0)) {
+                throw new RuntimeException('No se pudieron guardar las notificaciones del vendedor.');
+            }
+            $bytesEscritos = 0;
+            $longitud = strlen($json);
+            while ($bytesEscritos < $longitud) {
+                $bytes = fwrite($archivo, substr($json, $bytesEscritos));
+                if ($bytes === false || $bytes === 0) {
+                    throw new RuntimeException('No se pudieron guardar las notificaciones del vendedor.');
+                }
+                $bytesEscritos += $bytes;
+            }
+            if (!fflush($archivo)) {
+                throw new RuntimeException('No se pudieron guardar las notificaciones del vendedor.');
+            }
+
+            return $resultado;
+        } finally {
+            if ($bloqueado) {
+                flock($archivo, LOCK_UN);
+            }
+            fclose($archivo);
+        }
     }
 
-    public static function obtenerNoLeidas(PDO $pdo, int $idVendedor): array
+    public static function registrarNuevoPedido(int $idVendedor, array $pedido): void
     {
-        $stmt = $pdo->prepare(
-            "SELECT n.ID_NOTIFICACION, n.ID_FACTURA, n.FECHA_CREACION,
-                    CONCAT_WS(' ', c.NOMBRE, c.APELLIDOS) AS cliente,
-                    COUNT(v.ID_VENTAS) AS lineas_pedido,
-                    COALESCE(SUM(v.total), 0) AS total_pedido
-             FROM notificaciones_vendedor n
-             INNER JOIN facturas f ON f.ID_FACTURA = n.ID_FACTURA
-             LEFT JOIN clientes c ON c.ID_CLIENTE = f.ID_CLIENTE
-             LEFT JOIN ventas v
-                    ON v.ID_FACTURA = n.ID_FACTURA
-                   AND v.ID_VENDEDOR = n.ID_VENDEDOR
-             WHERE n.ID_VENDEDOR = ? AND n.LEIDA_EN IS NULL
-             GROUP BY n.ID_NOTIFICACION, n.ID_FACTURA, n.FECHA_CREACION,
-                      c.NOMBRE, c.APELLIDOS
-             ORDER BY n.FECHA_CREACION DESC, n.ID_NOTIFICACION DESC"
-        );
-        $stmt->execute([$idVendedor]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $idFactura = filter_var($pedido['ID_FACTURA'] ?? null, FILTER_VALIDATE_INT);
+        if (!$idFactura || $idFactura < 1) {
+            throw new InvalidArgumentException('La factura de la notificación no es válida.');
+        }
+
+        $notificacion = [
+            'ID_FACTURA' => $idFactura,
+            'FECHA_CREACION' => (string) ($pedido['FECHA_CREACION'] ?? date('Y-m-d H:i:s')),
+            'cliente' => trim((string) ($pedido['cliente'] ?? '')) ?: 'Cliente',
+            'lineas_pedido' => max(0, (int) ($pedido['lineas_pedido'] ?? 0)),
+            'total_pedido' => max(0, (float) ($pedido['total_pedido'] ?? 0)),
+        ];
+
+        self::actualizarArchivo($idVendedor, static function (array &$notificaciones) use ($notificacion): void {
+            foreach ($notificaciones as $existente) {
+                if ((int) ($existente['ID_FACTURA'] ?? 0) === $notificacion['ID_FACTURA']) {
+                    return;
+                }
+            }
+
+            $notificaciones[] = $notificacion;
+        });
     }
 
-    public static function marcarLeidas(PDO $pdo, int $idVendedor): void
+    public static function obtenerNoLeidas(int $idVendedor): array
     {
-        $stmt = $pdo->prepare(
-            'UPDATE notificaciones_vendedor
-             SET LEIDA_EN = CURRENT_TIMESTAMP
-             WHERE ID_VENDEDOR = ? AND LEIDA_EN IS NULL'
-        );
-        $stmt->execute([$idVendedor]);
+        return self::actualizarArchivo($idVendedor, static function (array &$notificaciones): array {
+            usort(
+                $notificaciones,
+                static fn(array $a, array $b): int => strcmp(
+                    (string) ($b['FECHA_CREACION'] ?? ''),
+                    (string) ($a['FECHA_CREACION'] ?? '')
+                )
+            );
+            return $notificaciones;
+        });
+    }
+
+    public static function marcarLeidas(int $idVendedor): void
+    {
+        self::actualizarArchivo($idVendedor, static function (array &$notificaciones): void {
+            $notificaciones = [];
+        });
     }
 }

@@ -35,8 +35,9 @@ ensureEstadoPedidoColumn($conexion);
 ensureFacturaVentaColumn($conexion);
 
 $stmt_cliente = $conexion->prepare(
-    "SELECT u.ID_CLIENTE, u.email, c.DIRECCION
-     FROM usuarios u
+    "SELECT u.ID_CLIENTE, u.email, c.DIRECCION,
+            CONCAT_WS(' ', c.NOMBRE, c.APELLIDOS) AS nombre_cliente
+    FROM usuarios u
      LEFT JOIN clientes c ON c.ID_CLIENTE = u.ID_CLIENTE
      WHERE u.id = ? AND LOWER(TRIM(u.rol)) = 'cliente'"
 );
@@ -138,14 +139,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
         }
     }
 
-    try {
-        NotificacionVendedor::asegurarTabla($conexion);
-    } catch (PDOException $e) {
-        error_log('Error al preparar notificaciones de pedidos: ' . $e->getMessage());
-        header("Location: index.php?url=procesar_compra&error=" . urlencode("No se pudo preparar el registro del pedido. Inténtalo de nuevo."));
-        exit();
-    }
-
     // Iniciar Transacción SQL para asegurar consistencia (Factura, Ventas y Stock)
     $conexion->beginTransaction();
 
@@ -180,6 +173,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
         $id_factura_generada = (int) $conexion->lastInsertId();
 
         $estado_pedido = 'Pagado';
+        $total_pedido = 0;
+        $lineas_pedido = 0;
 
         // Registrar detalle en 'ventas' y actualizar stock de productos
         foreach ($_SESSION['carrito'] as $id_producto => $item) {
@@ -200,17 +195,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
             $sql_venta = "INSERT INTO ventas (ID_PRODUCTO, cantidad, total, FECHA_VENTA, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, ID_FACTURA, estado_pedido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_venta = $conexion->prepare($sql_venta);
             $stmt_venta->execute([$id_producto, $cantidad, $total_linea, $fecha_actual, $id_vendedor, $id_cliente, $id_pago, $id_factura_generada, $estado_pedido]);
+            $total_pedido += $total_linea;
+            $lineas_pedido++;
 
             $sql_stock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
             $stmt_stock = $conexion->prepare($sql_stock);
             $stmt_stock->execute([$cantidad, $id_producto]);
         }
 
-        NotificacionVendedor::registrarNuevoPedido($conexion, $id_vendedor, $id_factura_generada);
-
         // Confirmar transacción y vaciar carrito
         $conexion->commit();
         unset($_SESSION['carrito']);
+
+        try {
+            NotificacionVendedor::registrarNuevoPedido($id_vendedor, [
+                'ID_FACTURA' => $id_factura_generada,
+                'FECHA_CREACION' => $fecha_actual,
+                'cliente' => $cliente['nombre_cliente'] ?? '',
+                'lineas_pedido' => $lineas_pedido,
+                'total_pedido' => $total_pedido,
+            ]);
+        } catch (Throwable $e) {
+            error_log('No se pudo guardar la notificación del nuevo pedido: ' . $e->getMessage());
+        }
 
         header("Location: index.php?url=dashboard_cliente&compra=exitoso&factura=" . $id_factura_generada);
         exit();
