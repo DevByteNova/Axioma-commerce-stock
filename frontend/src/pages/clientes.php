@@ -43,7 +43,7 @@ $db = $database->getConnection();
     </div>
 
     <div class="busqueda-container">
-        <input type="text" id="busqueda" placeholder="Buscar cliente...">
+        <input type="text" id="busqueda" placeholder="Buscar cliente por nombre o ID...">
     </div>
 
     <table>
@@ -62,8 +62,8 @@ $db = $database->getConnection();
 
             if ($stmt->rowCount() > 0) {
                 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    echo "<tr>";
-                    echo "<td>" . htmlspecialchars(($row['NOMBRE'] ?? '') . ' ' . ($row['APELLIDOS'] ?? '')) . "</td>";
+                    echo "<tr data-id-cliente='" . (int)$row['ID_CLIENTE'] . "'>";
+                    echo "<td><span>ID: " . (int)$row['ID_CLIENTE'] . "</span> " . htmlspecialchars(($row['NOMBRE'] ?? '') . ' ' . ($row['APELLIDOS'] ?? '')) . "</td>";
                     echo "<td>" . htmlspecialchars($row['email'] ?? '') . "</td>";
                     echo "<td>" . htmlspecialchars($row['DIRECCION'] ?? '') . "</td>";
                     echo "<td>" . htmlspecialchars($row['TELEFONO'] ?? '') . "</td>";
@@ -91,7 +91,8 @@ $db = $database->getConnection();
 
         for (let i = 0; i < filas.length; i++) {
             const textoFila = filas[i].textContent.toLowerCase();
-            filas[i].style.display = textoFila.includes(filtro) ? '' : 'none';
+            const idCliente = filas[i].dataset.idCliente || '';
+            filas[i].style.display = textoFila.includes(filtro) || idCliente.includes(filtro) ? '' : 'none';
         }
     });
 </script>

@@ -43,36 +43,10 @@ function ensureDesgloseVentaColumns(PDO $pdo): void
     }
 }
 
-// Forzar pantalla de login para depuración: visita index.php?force_login=1
-// HACK: Este bloque es un parche rápido para forzar la pantalla de login
-// durante la depuración. No es una solución final; se deja temporalmente
-// para acelerar pruebas de sesión. Eliminar o refactorizar en producción.
-if (isset($_GET['force_login']) && $_GET['force_login'] == '1') {
-    // Limpiar sesión sin destruir completamente (mantener compatibilidad)
-    $_SESSION = [];
-    if (ini_get('session.use_cookies')) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params['path'], $params['domain'], $params['secure'], $params['httponly']
-        );
-    }
-    session_destroy();
-    // Reiniciar sesión vacía para evitar warnings posteriores
-    session_start();
-}
-
 // 2. Logout
 if (isset($_GET['action']) && $_GET['action'] === 'logout') {
-    $_SESSION = array(); 
-    if (ini_get("session.use_cookies")) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params["path"], $params["domain"],
-            $params["secure"], $params["httponly"]
-        ); 
-    }
-    session_destroy(); 
-    header("Location: index.php?url=login"); 
+    destroy_secure_session();
+    header('Location: index.php?url=login');
     exit;
 }
 
@@ -285,7 +259,6 @@ $rutasPermitidas = [
     'registrar_pijama'    => ['Administrador', 'Vendedor'],
     'procesar_compra'     => ['Cliente'],
     'inventario'          => ['Administrador'],
-    'lista_vendedores'    => ['Administrador'],
     'ver_inventario'      => ['Administrador', 'Vendedor', 'Cliente'], // Permitir ver stock si lo deseas
     'ver_carrito'         => ['Cliente'],
     'eliminar_del_carrito'=> ['Cliente'],
@@ -453,10 +426,6 @@ switch ($route) {
 
     case 'ver_inventario':
         require_once __DIR__ . '/frontend/src/pages/ver_inventario.php';
-        break;
-
-    case 'lista_vendedores':
-        require_once __DIR__ . '/frontend/src/pages/lista_vendedores.php';
         break;
 
     case 'registrar_pijamas':
