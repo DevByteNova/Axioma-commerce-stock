@@ -12,6 +12,7 @@ if ($id > 0) {
 
         $references = [
             'facturas' => 'DELETE FROM facturas WHERE ID_CLIENTE = ?',
+            'detalle_venta' => 'DELETE dv FROM detalle_venta dv INNER JOIN ventas v ON v.ID_VENTAS = dv.ID_VENTAS WHERE v.ID_CLIENTE = ?',
             'ventas'   => 'DELETE FROM ventas WHERE ID_CLIENTE = ?',
             'usuarios' => 'DELETE FROM usuarios WHERE ID_CLIENTE = ?'
         ];
@@ -33,8 +34,9 @@ if ($id > 0) {
         $db->commit();
 
         $_SESSION['flash_success'] = sprintf(
-            'Cliente eliminado correctamente. Registros removidos: facturas=%d, ventas=%d, usuarios=%d.',
+            'Cliente eliminado correctamente. Registros removidos: facturas=%d, detalles=%d, ventas=%d, usuarios=%d.',
             $removed['facturas'],
+            $removed['detalle_venta'],
             $removed['ventas'],
             $removed['usuarios']
         );

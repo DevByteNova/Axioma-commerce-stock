@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once 'conexion.php';
+require_once __DIR__ . '/../../../backend/src/models/DetalleVenta.php';
 
 if (!isset($_SESSION['usuario_id']) || $_SESSION['rol'] !== 'cliente') {
     header("Location: login.php");
@@ -26,21 +27,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $total = $producto['precio'] * $cantidad;
 
+        $pdo->beginTransaction();
+
         // 2. Insertar la venta vinculando al cliente autenticado
         $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, cantidad, total, FECHA_VENTA) VALUES (?, ?, ?, ?, ?, ?, NOW())";
         $stmtVenta = $pdo->prepare($sqlVenta);
         $stmtVenta->execute([$id_producto, $id_vendedor, $id_cliente, $id_pago, $cantidad, $total]);
+        DetalleVenta::registrar(
+            $pdo,
+            (int) $pdo->lastInsertId(),
+            $id_producto,
+            $cantidad,
+            (float) $producto['precio']
+        );
 
         // 3. Descontar el stock
         $nuevoStock = $producto['stock'] - $cantidad;
         $stmtStock = $pdo->prepare("UPDATE productos SET stock = ? WHERE ID_PRODUCTO = ?");
         $stmtStock->execute([$nuevoStock, $id_producto]);
+        $pdo->commit();
 
         // Redirigir al panel del cliente con éxito
         header("Location: cliente_dashboard.php?exito=compra_ok");
         exit();
 
     } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         die("Error al procesar la compra: " . $e->getMessage());
     }
 }

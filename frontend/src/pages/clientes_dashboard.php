@@ -453,8 +453,19 @@ $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
                 <?php
                 $comprasCliente = [];
                 try {
-                    $stmtHistorial = $pdo->prepare("SELECT v.ID_VENTAS, p.nombre AS producto, v.cantidad, v.total,
-                                                            v.FECHA_VENTA, v.estado_pedido
+                    $stmtHistorial = $pdo->prepare("SELECT v.ID_VENTAS,
+                                                            COALESCE(
+                                                                (SELECT GROUP_CONCAT(CONCAT(p2.nombre, ' x', dv.cantidad) ORDER BY dv.ID_DETALLE SEPARATOR ', ')
+                                                                 FROM detalle_venta dv
+                                                                 INNER JOIN productos p2 ON p2.ID_PRODUCTO = dv.ID_PRODUCTO
+                                                                 WHERE dv.ID_VENTAS = v.ID_VENTAS),
+                                                                p.nombre
+                                                            ) AS productos,
+                                                            COALESCE(
+                                                                (SELECT SUM(dv.cantidad) FROM detalle_venta dv WHERE dv.ID_VENTAS = v.ID_VENTAS),
+                                                                v.cantidad
+                                                            ) AS cantidad,
+                                                            v.total, v.FECHA_VENTA, v.estado_pedido
                                                      FROM ventas v
                                                      LEFT JOIN productos p ON v.ID_PRODUCTO = p.ID_PRODUCTO
                                                      WHERE v.ID_CLIENTE = ?
@@ -505,7 +516,7 @@ $id_cliente = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
                                 <?php foreach ($comprasCliente as $compra): ?>
                                     <tr>
                                         <td class="fw-semibold">#<?php echo (int) $compra['ID_VENTAS']; ?></td>
-                                        <td><?php echo htmlspecialchars($compra['producto'] ?? 'Producto no disponible'); ?></td>
+                                        <td><?php echo htmlspecialchars($compra['productos'] ?? 'Producto no disponible'); ?></td>
                                         <td><span class="badge rounded-pill bg-primary"><?php echo htmlspecialchars($compra['estado_pedido'] ?? 'Pagado'); ?></span></td>
                                         <td><span class="badge bg-secondary"><?php echo (int) $compra['cantidad']; ?></span></td>
                                         <td class="fw-bold text-success">$<?php echo number_format((float) $compra['total'], 2, ',', '.'); ?></td>

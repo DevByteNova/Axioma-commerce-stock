@@ -30,14 +30,19 @@ try {
         }
     }
 
-    $sql = "SELECT v.ID_VENTAS, v.ID_VENDEDOR, v.cantidad, v.subtotal, v.iva, v.total, v.FECHA_VENTA,
-                   p.nombre AS producto, p.talla, p.PRECIO AS precio_actual,
+    $sql = "SELECT v.ID_VENTAS, v.ID_VENDEDOR,
+                   COALESCE(dv.cantidad, v.cantidad) AS cantidad,
+                   COALESCE(dv.subtotal_linea, v.subtotal, ROUND(p.PRECIO * v.cantidad, 2)) AS subtotal_linea,
+                   v.subtotal AS subtotal_venta, v.iva, v.total, v.FECHA_VENTA,
+                   p.nombre AS producto, p.talla,
+                   COALESCE(dv.precio_unitario, p.PRECIO) AS precio_actual,
                    CONCAT_WS(' ', c.NOMBRE, c.APELLIDOS) AS cliente,
                    c.DIRECCION AS direccion_cliente, c.TELEFONO AS telefono_cliente,
                    c.email AS email_cliente, mp.nombre_metodo AS metodo_pago,
                    ved.NOMBRE AS vendedor
             FROM ventas v
-            LEFT JOIN productos p ON p.ID_PRODUCTO = v.ID_PRODUCTO
+            LEFT JOIN detalle_venta dv ON dv.ID_VENTAS = v.ID_VENTAS
+            LEFT JOIN productos p ON p.ID_PRODUCTO = COALESCE(dv.ID_PRODUCTO, v.ID_PRODUCTO)
             LEFT JOIN clientes c ON c.ID_CLIENTE = v.ID_CLIENTE
             LEFT JOIN metodos_pago mp ON mp.ID_PAGO = v.ID_PAGO
             LEFT JOIN vendedor ved ON ved.ID_VENDEDOR = v.ID_VENDEDOR
@@ -49,7 +54,8 @@ try {
     }
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    $venta = $stmt->fetch(PDO::FETCH_ASSOC);
+    $lineasVenta = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $venta = $lineasVenta[0] ?? null;
 } catch (Throwable $e) {
     error_log('Error al cargar comprobante de venta: ' . $e->getMessage());
     http_response_code(500);
@@ -61,11 +67,14 @@ if (!$venta) {
     exit('No se encontró la venta solicitada.');
 }
 
-$cantidad = (int) $venta['cantidad'];
 $total = (float) $venta['total'];
-$subtotal = $venta['subtotal'] !== null
-    ? (float) $venta['subtotal']
-    : round((float) $venta['precio_actual'] * $cantidad, 2);
+$subtotal = array_sum(array_map(
+    static fn(array $linea): float => (float) $linea['subtotal_linea'],
+    $lineasVenta
+));
+$subtotal = $venta['subtotal_venta'] !== null
+    ? (float) $venta['subtotal_venta']
+    : $subtotal;
 $iva = $venta['iva'] !== null
     ? (float) $venta['iva']
     : max(0, round($total - $subtotal, 2));
@@ -169,7 +178,7 @@ $storeCollection = MARCA_COLECCION;
         <section aria-labelledby="sale-customer-title">
             <h2 class="sale-invoice__section-title" id="sale-customer-title">Datos de la venta</h2>
             <div class="sale-invoice__details">
-                <div class="sale-invoice__detail"><span class="sale-invoice__label">Cliente</span><span class="sale-invoice__value"><?php echo $escape($venta['cliente'] ?: 'Cliente General'); ?></span></div>
+                <div class="sale-invoice__detail"><span class="sale-invoice__label">Cliente</span><span class="sale-invoice__value"><?php echo $escape($venta['cliente'] ?: 'Cliente no frecuente'); ?></span></div>
                 <div class="sale-invoice__detail"><span class="sale-invoice__label">Vendedor</span><span class="sale-invoice__value"><?php echo $escape($venta['vendedor'] ?: '—'); ?></span></div>
                 <div class="sale-invoice__detail"><span class="sale-invoice__label">Correo</span><span class="sale-invoice__value"><?php echo $escape($venta['email_cliente'] ?: '—'); ?></span></div>
                 <div class="sale-invoice__detail"><span class="sale-invoice__label">Teléfono</span><span class="sale-invoice__value"><?php echo $escape($venta['telefono_cliente'] ?: '—'); ?></span></div>
@@ -190,12 +199,14 @@ $storeCollection = MARCA_COLECCION;
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td><span class="sale-invoice__product-name"><?php echo $escape($venta['producto'] ?: 'Producto'); ?></span><span class="sale-invoice__product-size">Talla: <?php echo $escape($venta['talla'] ?: '—'); ?></span></td>
-                        <td><?php echo $cantidad; ?></td>
-                        <td><?php echo $money($subtotal / max($cantidad, 1)); ?></td>
-                        <td><?php echo $money($subtotal); ?></td>
-                    </tr>
+                    <?php foreach ($lineasVenta as $linea): ?>
+                        <tr>
+                            <td><span class="sale-invoice__product-name"><?php echo $escape($linea['producto'] ?: 'Producto'); ?></span><span class="sale-invoice__product-size">Talla: <?php echo $escape($linea['talla'] ?: '—'); ?></span></td>
+                            <td><?php echo (int) $linea['cantidad']; ?></td>
+                            <td><?php echo $money($linea['precio_actual']); ?></td>
+                            <td><?php echo $money($linea['subtotal_linea']); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </section>

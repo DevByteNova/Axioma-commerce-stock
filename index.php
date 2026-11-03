@@ -67,6 +67,7 @@ if ($url === 'guardar_venta' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         exit('Solicitud no válida. Actualiza la página e inténtalo de nuevo.');
     }
     require_once __DIR__ . '/backend/src/conexion.php';
+    require_once __DIR__ . '/backend/src/models/DetalleVenta.php';
     $db = new Database();
     $pdo = $db->getConnection();
     if (!$pdo) {
@@ -74,13 +75,41 @@ if ($url === 'guardar_venta' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    $id_producto = intval($_POST['id_producto'] ?? 0);
-    $id_cliente  = intval($_POST['id_cliente'] ?? 1);
+    $productoIds = $_POST['id_producto'] ?? [];
+    $cantidades = $_POST['cantidad'] ?? [];
+    $idClienteEntrada = filter_var($_POST['id_cliente'] ?? null, FILTER_VALIDATE_INT);
+    $id_cliente = $idClienteEntrada === false || $idClienteEntrada === null
+        ? null
+        : ($idClienteEntrada > 0 ? $idClienteEntrada : null);
     $id_pago     = intval($_POST['id_pago'] ?? 1);
-    $cantidad    = intval($_POST['cantidad'] ?? 0);
     $id_vendedor = (int) ($_SESSION['id_vendedor'] ?? 0);
 
-    if ($id_producto > 0 && $id_cliente > 0 && $id_pago > 0 && $cantidad > 0 && $id_vendedor > 0) {
+    if (!is_array($productoIds) || !is_array($cantidades) || count($productoIds) !== count($cantidades)
+        || count($productoIds) < 1 || count($productoIds) > 20
+        || $idClienteEntrada === false || $idClienteEntrada === null || $idClienteEntrada < 0
+        || $id_pago <= 0 || $id_vendedor <= 0) {
+        http_response_code(400);
+        exit('Error: selecciona entre 1 y 20 productos e ingresa cantidades válidas.');
+    }
+
+    $cantidadesPorProducto = [];
+    foreach ($productoIds as $indice => $idProductoEntrada) {
+        $idProducto = filter_var($idProductoEntrada, FILTER_VALIDATE_INT);
+        $cantidad = filter_var($cantidades[$indice], FILTER_VALIDATE_INT);
+        if (!$idProducto || $idProducto < 1 || !$cantidad || $cantidad < 1) {
+            http_response_code(400);
+            exit('Error: los productos y cantidades de la venta no son válidos.');
+        }
+        $cantidadesPorProducto[$idProducto] = ($cantidadesPorProducto[$idProducto] ?? 0) + $cantidad;
+    }
+    ksort($cantidadesPorProducto);
+
+    if (count($cantidadesPorProducto) > 20) {
+        http_response_code(400);
+        exit('Error: una venta puede contener hasta 20 productos distintos.');
+    }
+
+    if ($id_cliente > 0 && $id_pago > 0 && $id_vendedor > 0) {
         try {
             ensureVentasEstadoPedidoColumn($pdo);
             ensureReferenciaPagoColumn($pdo);
@@ -99,50 +128,81 @@ if ($url === 'guardar_venta' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $pdo->beginTransaction();
-            $stmt = $pdo->prepare("SELECT PRECIO, STOCK FROM productos WHERE ID_PRODUCTO = ? FOR UPDATE");
-            $stmt->execute([$id_producto]);
-            $producto = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmtProducto = $pdo->prepare(
+                'SELECT ID_PRODUCTO, PRECIO, STOCK FROM productos WHERE ID_PRODUCTO = ? FOR UPDATE'
+            );
+            $productosVenta = [];
+            $subtotal = 0.0;
+            $cantidadTotal = 0;
+            foreach ($cantidadesPorProducto as $idProducto => $cantidad) {
+                $stmtProducto->execute([$idProducto]);
+                $producto = $stmtProducto->fetch(PDO::FETCH_ASSOC);
+                if (!$producto) {
+                    throw new RuntimeException('Uno de los productos seleccionados no existe.');
+                }
+                if ((int) $producto['STOCK'] < $cantidad) {
+                    throw new RuntimeException(
+                        'Stock insuficiente para el producto #' . $idProducto . '. Disponible: ' . (int) $producto['STOCK'] . '.'
+                    );
+                }
 
-            if ($producto && $producto['STOCK'] >= $cantidad) {
+                $producto['cantidad'] = $cantidad;
+                $producto['subtotal'] = round((float) $producto['PRECIO'] * $cantidad, 2);
+                $productosVenta[] = $producto;
+                $subtotal += $producto['subtotal'];
+                $cantidadTotal += $cantidad;
+            }
+
+            if ($id_cliente !== null) {
                 $stmtCliente = $pdo->prepare('SELECT 1 FROM clientes WHERE ID_CLIENTE = ?');
                 $stmtCliente->execute([$id_cliente]);
                 if (!$stmtCliente->fetchColumn()) {
                     throw new RuntimeException('El cliente seleccionado no es válido.');
                 }
+            }
 
-                $subtotal = round((float) $producto['PRECIO'] * $cantidad, 2);
-                $iva = round($subtotal * 0.19, 2);
-                $total_venta = $subtotal + $iva;
+            $subtotal = round($subtotal, 2);
+            $iva = round($subtotal * 0.19, 2);
+            $total_venta = $subtotal + $iva;
 
-                $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, referencia_pago, estado_pedido, cantidad, subtotal, iva, total, FECHA_VENTA) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-                $stmtVenta = $pdo->prepare($sqlVenta);
-                $stmtVenta->execute([
-                    $id_producto,
-                    $id_vendedor,
-                    $id_cliente,
-                    $id_pago,
-                    $esPagoTarjeta ? $referenciaPago : null,
-                    'Pagado',
-                    $cantidad,
-                    $subtotal,
-                    $iva,
-                    $total_venta
-                ]);
+            $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, referencia_pago, estado_pedido, cantidad, subtotal, iva, total, FECHA_VENTA) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $stmtVenta = $pdo->prepare($sqlVenta);
+            $stmtVenta->execute([
+                $productosVenta[0]['ID_PRODUCTO'],
+                $id_vendedor,
+                $id_cliente,
+                $id_pago,
+                $esPagoTarjeta ? $referenciaPago : null,
+                'Pagado',
+                $cantidadTotal,
+                $subtotal,
+                $iva,
+                $total_venta
+            ]);
+            $idVenta = (int) $pdo->lastInsertId();
 
-                $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ? AND STOCK >= ?";
-                $stmtStock = $pdo->prepare($sqlStock);
-                $stmtStock->execute([$cantidad, $id_producto, $cantidad]);
+            $stmtStock = $pdo->prepare(
+                'UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ? AND STOCK >= ?'
+            );
+            foreach ($productosVenta as $producto) {
+                DetalleVenta::registrar(
+                    $pdo,
+                    $idVenta,
+                    (int) $producto['ID_PRODUCTO'],
+                    (int) $producto['cantidad'],
+                    (float) $producto['PRECIO']
+                );
+
+                $stmtStock->execute([$producto['cantidad'], $producto['ID_PRODUCTO'], $producto['cantidad']]);
                 if ($stmtStock->rowCount() !== 1) {
                     throw new RuntimeException('El stock cambió mientras se registraba la venta. Inténtalo de nuevo.');
                 }
-
-                $pdo->commit();
-
-                header('Location: index.php?url=dashboard&exito=venta_ok');
-                exit();
-            } else {
-                throw new RuntimeException('Stock insuficiente o producto no válido.');
             }
+
+            $pdo->commit();
+
+            header('Location: index.php?url=dashboard&exito=venta_ok');
+            exit();
         } catch (Throwable $e) {
             if ($pdo && $pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -215,6 +275,14 @@ if ($url === 'procesar_compra_cliente' && $_SERVER['REQUEST_METHOD'] === 'POST')
         // Usar un vendedor por defecto (id 1) si no hay vendedor asociado
         $id_vendedor_for_insert = 1;
         $stmtVenta->execute([$id_producto, $id_vendedor_for_insert, $id_cliente, $id_pago, 'Pagado', $cantidad, $total]);
+        require_once __DIR__ . '/backend/src/models/DetalleVenta.php';
+        DetalleVenta::registrar(
+            $pdo,
+            (int) $pdo->lastInsertId(),
+            $id_producto,
+            $cantidad,
+            (float) $producto['PRECIO']
+        );
 
         $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
         $stmtStock = $pdo->prepare($sqlStock);

@@ -22,6 +22,7 @@ if (!isset($_SESSION['carrito']) || empty($_SESSION['carrito'])) {
 
 // Cargar la conexión a la base de datos
 require_once __DIR__ . '/../../../backend/src/conexion.php';
+require_once __DIR__ . '/../../../backend/src/models/DetalleVenta.php';
 require_once __DIR__ . '/../../../backend/src/models/NotificacionVendedor.php';
 $db = new Database();
 $conexion = $db->getConnection();
@@ -195,6 +196,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_pago'])) {
             $sql_venta = "INSERT INTO ventas (ID_PRODUCTO, cantidad, total, FECHA_VENTA, ID_VENDEDOR, ID_CLIENTE, ID_PAGO, ID_FACTURA, estado_pedido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_venta = $conexion->prepare($sql_venta);
             $stmt_venta->execute([$id_producto, $cantidad, $total_linea, $fecha_actual, $id_vendedor, $id_cliente, $id_pago, $id_factura_generada, $estado_pedido]);
+            DetalleVenta::registrar(
+                $conexion,
+                (int) $conexion->lastInsertId(),
+                (int) $id_producto,
+                $cantidad,
+                $precio_unitario
+            );
             $total_pedido += $total_linea;
             $lineas_pedido++;
 

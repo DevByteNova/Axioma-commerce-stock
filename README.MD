@@ -63,6 +63,10 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 
 **Actualizar una base de datos ya importada:** ejecutar `database/migracion_catalogo.sql` desde phpMyAdmin (pestaña SQL). Crea la tabla `categorias`, agrega las columnas `ID_CATEGORIA` e `imagen` a `productos` y clasifica los productos existentes. Se puede ejecutar más de una vez. En una instalación nueva basta con importar `database/axioma_bd.sql`, que ya incluye estos cambios.
 
+Para guardar las relaciones de ventas con clientes y métodos de pago, ejecuta `database/migracion_relaciones_ventas.sql`. Las ventas con un `ID_PAGO` que no exista en `metodos_pago` se dejan sin método (`NULL`) para poder crear la clave foránea.
+
+Para registrar las líneas de cada venta, ejecuta también `database/migracion_detalle_venta.sql` después de importar la base de datos. El checkout y las ventas de clientes/vendedores guardan en `detalle_venta` el producto, cantidad, precio unitario y subtotal; las facturas consultan esos datos y conservan compatibilidad con ventas anteriores a la migración. El método de pago se relaciona con `ventas`, ya que es único para la compra completa.
+
 ## Seguridad
 * Autenticación basada en sesiones PHP.
 * Rutas protegidas según el rol: `Cliente`, `Vendedor` y `Administrador`.
@@ -100,6 +104,8 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 - Para tarjeta se solicitan titular, número de 16 dígitos, vencimiento y CVV.
 - Para PSE se solicita el banco seleccionado.
 - La compra crea una factura, registra las ventas, descuenta el inventario y vacía el carrito dentro de una transacción.
+- El vendedor puede incluir hasta 20 productos distintos con sus cantidades en una sola venta; el sistema verifica y descuenta el stock de todos los productos dentro de la misma transacción.
+- Al registrar una venta, el vendedor puede elegir **Cliente no frecuente (sin registrar)**. La venta queda sin `ID_CLIENTE` y no crea un registro de cliente.
 - Después de comprar, el dashboard muestra la factura recién creada.
 - `frontend/src/pages/ver_factura.php?id=...` permite consultar la factura.
 - `frontend/src/pages/generar_factura.php?id=...` genera el PDF con Dompdf.

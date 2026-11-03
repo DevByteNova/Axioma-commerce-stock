@@ -10,6 +10,7 @@ header("Access-Control-Allow-Methods: POST");
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/security.php';
 require_once __DIR__ . '/models/Usuario.php';
+require_once __DIR__ . '/models/DetalleVenta.php';
 
 configure_secure_session();
 
@@ -422,6 +423,13 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'registrar_venta') {
         $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, cantidad, total, FECHA_VENTA) VALUES (?, ?, ?, ?, NOW())";
         $stmtVenta = $pdo->prepare($sqlVenta);
         $stmtVenta->execute([$id_producto, $id_vendedor, $cantidad, $total_venta]);
+        DetalleVenta::registrar(
+            $pdo,
+            (int) $pdo->lastInsertId(),
+            $id_producto,
+            $cantidad,
+            (float) $producto['PRECIO']
+        );
 
         // Descontar el stock del producto
         $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
@@ -488,6 +496,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($data['action']) && $data['ac
         $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, cantidad, total, FECHA_VENTA) VALUES (?, ?, ?, ?, NOW())";
         $stmtVenta = $db->prepare($sqlVenta);
         $stmtVenta->execute([$id_producto, $id_vendedor, $cantidad, $total_venta]);
+        DetalleVenta::registrar(
+            $db,
+            (int) $db->lastInsertId(),
+            $id_producto,
+            $cantidad,
+            (float) $producto['PRECIO']
+        );
 
         // Descontar stock
         $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";

@@ -97,6 +97,8 @@ $resumen_ventas = [
     'total_vendido' => 0,
     'total_efectivo' => 0
 ];
+$stock_critico = [];
+$mensaje_error_stock = '';
 
 if ($pdo) {
     try {
@@ -110,7 +112,21 @@ if ($pdo) {
         $stmtResumen->execute([':id_vendedor' => (int) ($_SESSION['id_vendedor'] ?? 0)]);
         $resumen_ventas = $stmtResumen->fetch(PDO::FETCH_ASSOC) ?: $resumen_ventas;
     } catch (Exception $e) {
-        // La tabla mantiene los valores cero si no se puede consultar el resumen.
+        error_log('Error al consultar resumen de ventas del vendedor: ' . $e->getMessage());
+    }
+
+    try {
+        $stmtStockCritico = $pdo->prepare(
+            'SELECT ID_PRODUCTO, nombre, STOCK, talla
+             FROM productos
+             WHERE STOCK <= :limite
+             ORDER BY STOCK ASC, nombre ASC'
+        );
+        $stmtStockCritico->execute([':limite' => 5]);
+        $stock_critico = $stmtStockCritico->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        error_log('Error al consultar productos con stock crítico: ' . $e->getMessage());
+        $mensaje_error_stock = 'No se pudo cargar la información del stock crítico.';
     }
 }
 ?>
@@ -206,6 +222,54 @@ if ($pdo) {
             </div>
         </div>
 
+        <section class="card shadow-sm border-0 mb-4" aria-labelledby="stock-critico-titulo">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <div>
+                        <h2 id="stock-critico-titulo" class="h4 mb-1 fw-bold text-dark">Stock crítico</h2>
+                        <p class="text-muted mb-0">Productos con cinco unidades o menos disponibles.</p>
+                    </div>
+                    <a href="index.php?url=ver_inventario" class="btn btn-outline-primary btn-sm">Ver inventario</a>
+                </div>
+                <?php if ($mensaje_error_stock !== ''): ?>
+                    <div class="alert alert-warning mt-3 mb-0" role="alert">
+                        <?php echo htmlspecialchars($mensaje_error_stock, ENT_QUOTES, 'UTF-8'); ?>
+                    </div>
+                <?php else: ?>
+                    <div class="table-responsive mt-3">
+                        <table class="table table-bordered table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Talla</th>
+                                    <th>Stock disponible</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if ($stock_critico): ?>
+                                    <?php foreach ($stock_critico as $producto): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($producto['nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?php echo htmlspecialchars($producto['talla'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td>
+                                                <span class="badge <?php echo (int) $producto['STOCK'] === 0 ? 'text-bg-danger' : 'text-bg-warning'; ?>">
+                                                    <?php echo (int) $producto['STOCK']; ?>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-3">No hay productos en stock crítico.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+
         <div class="row g-4">
             <div class="col-12">
                 <div class="card shadow-sm border-0">
@@ -243,42 +307,49 @@ if ($pdo) {
                         <form action="index.php?url=guardar_venta" method="POST">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 
-                            <!-- Seleccionar Producto -->
                             <div class="mb-3">
-                                <label for="id_producto" class="form-label fw-semibold">Producto:</label>
-                                <select name="id_producto" id="id_producto" class="form-select" required>
-                                    <option value="">Seleccione un producto...</option>
-                                    <?php
-                                    $queryProd = null;
-                                    try {
-                                        if ($pdo) {
-                                            ensureEstadoPedidoColumn($pdo);
-                                            $queryProd = $pdo->query("SELECT * FROM productos WHERE STOCK > 0");
-                                        } else {
-                                            echo '<option value="">Error de conexión a la BD</option>';
+                                <label class="form-label fw-semibold">Productos:</label>
+                                <?php
+                                $opcionesProductos = '<option value="">Seleccione un producto...</option>';
+                                try {
+                                    if ($pdo) {
+                                        ensureEstadoPedidoColumn($pdo);
+                                        $queryProd = $pdo->query('SELECT ID_PRODUCTO, nombre, PRECIO, STOCK FROM productos WHERE STOCK > 0 ORDER BY nombre');
+                                        while ($prod = $queryProd->fetch(PDO::FETCH_ASSOC)) {
+                                            $opcionesProductos .= '<option value="' . (int) $prod['ID_PRODUCTO'] . '" data-precio="' .
+                                                htmlspecialchars((string) $prod['PRECIO'], ENT_QUOTES, 'UTF-8') . '" data-stock="' .
+                                                (int) $prod['STOCK'] . '">' . htmlspecialchars($prod['nombre'], ENT_QUOTES, 'UTF-8') .
+                                                ' - Stock: ' . (int) $prod['STOCK'] . ' ($' . number_format((float) $prod['PRECIO'], 2) . ')</option>';
                                         }
-
-                                        if ($pdo && $queryProd) {
-                                            while ($prod = $queryProd->fetch(PDO::FETCH_ASSOC)) {
-                                                $id = $prod['ID_PRODUCTO'] ?? $prod['id_producto'] ?? 1;
-                                                $nombreProd = $prod['nombre'] ?? 'Sin nombre';
-                                                $stockProd = $prod['STOCK'] ?? 0;
-                                                $precioProd = $prod['PRECIO'] ?? 0;
-
-                                                echo '<option value="' . (int) $id . '" data-precio="' . htmlspecialchars((string) $precioProd, ENT_QUOTES, 'UTF-8') . '" data-stock="' . (int) $stockProd . '">' . htmlspecialchars($nombreProd) . ' - Stock: ' . (int) $stockProd . ' ($' . number_format((float) $precioProd, 2) . ')</option>';
-                                            }
-                                        }
-                                    } catch (Exception $e) {
-                                        echo '<option value="">Error de conexión a la BD</option>';
                                     }
-                                    ?>
-                                </select>
+                                } catch (Throwable $e) {
+                                    error_log('No se pudieron cargar productos para la venta: ' . $e->getMessage());
+                                }
+                                ?>
+                                <div id="ventaProductos" class="d-grid gap-2">
+                                    <div class="row g-2 venta-producto-row">
+                                        <div class="col-md-8">
+                                            <select name="id_producto[]" id="id_producto" class="form-select venta-producto" aria-label="Producto" required>
+                                                <?php echo $opcionesProductos; ?>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <input type="number" name="cantidad[]" class="form-control venta-cantidad" value="1" min="1" aria-label="Cantidad" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="agregarProductoVenta">
+                                    Agregar otro producto
+                                </button>
+                                <small class="form-text d-block">Puedes agregar hasta 20 productos distintos.</small>
                             </div>
 
                             <!-- Seleccionar Cliente -->
                             <div class="mb-3">
                                 <label for="id_cliente" class="form-label fw-semibold">Cliente:</label>
                                 <select name="id_cliente" id="id_cliente" class="form-select" required>
+                                    <option value="">Seleccione un cliente...</option>
+                                    <option value="0">Cliente no frecuente (sin registrar)</option>
                                     <?php
                                     $queryCli = null;
                                     try {
@@ -287,14 +358,13 @@ if ($pdo) {
                                             while ($cli = $queryCli->fetch(PDO::FETCH_ASSOC)) {
                                                 echo '<option value="' . (int) $cli['ID_CLIENTE'] . '">' . htmlspecialchars($cli['nombre']) . '</option>';
                                             }
-                                        } else {
-                                            echo '<option value="1">Cliente General</option>';
                                         }
-                                    } catch (Exception $e) {
-                                        echo '<option value="1">Cliente General</option>';
+                                    } catch (Throwable $e) {
+                                        error_log('No se pudieron cargar clientes para la venta: ' . $e->getMessage());
                                     }
                                     ?>
                                 </select>
+                                <small class="form-text">El cliente no frecuente no se guarda en el registro de clientes.</small>
                             </div>
 
                             <!-- Seleccionar Método de Pago -->
@@ -318,12 +388,6 @@ if ($pdo) {
                                     }
                                     ?>
                                 </select>
-                            </div>
-
-                            <!-- Cantidad -->
-                            <div class="mb-3">
-                                <label for="cantidad" class="form-label fw-semibold">Cantidad:</label>
-                                <input type="number" name="cantidad" id="cantidad" class="form-control" value="1" min="1" required>
                             </div>
 
                             <div class="card border-primary-subtle bg-light mb-3" aria-live="polite">
@@ -391,8 +455,20 @@ if ($pdo) {
                                             ensureEstadoPedidoColumn($pdo);
                                         }
 
-                                        $sqlHistorial = "SELECT v.ID_VENTAS, p.nombre AS producto, CONCAT_WS(' ', c.NOMBRE, c.APELLIDOS) AS cliente,
-                                                            mp.nombre_metodo AS pago, v.estado_pedido, v.cantidad, v.total, v.FECHA_VENTA
+                                        $sqlHistorial = "SELECT v.ID_VENTAS,
+                                                            COALESCE(
+                                                                (SELECT GROUP_CONCAT(CONCAT(p2.nombre, ' x', dv.cantidad) ORDER BY dv.ID_DETALLE SEPARATOR ', ')
+                                                                 FROM detalle_venta dv
+                                                                 INNER JOIN productos p2 ON p2.ID_PRODUCTO = dv.ID_PRODUCTO
+                                                                 WHERE dv.ID_VENTAS = v.ID_VENTAS),
+                                                                p.nombre
+                                                            ) AS productos,
+                                                            COALESCE(
+                                                                (SELECT SUM(dv.cantidad) FROM detalle_venta dv WHERE dv.ID_VENTAS = v.ID_VENTAS),
+                                                                v.cantidad
+                                                            ) AS cantidad,
+                                                            COALESCE(NULLIF(TRIM(CONCAT_WS(' ', c.NOMBRE, c.APELLIDOS)), ''), 'Cliente no frecuente') AS cliente,
+                                                            mp.nombre_metodo AS pago, v.estado_pedido, v.total, v.FECHA_VENTA
                                                      FROM ventas v
                                                      LEFT JOIN productos p ON v.ID_PRODUCTO = p.ID_PRODUCTO
                                                      LEFT JOIN clientes c ON v.ID_CLIENTE = c.ID_CLIENTE
@@ -420,7 +496,7 @@ if ($pdo) {
 
                                                 echo '<tr>';
                                                 echo '<td>#' . $row['ID_VENTAS'] . '</td>';
-                                                echo '<td>' . htmlspecialchars($row['producto'] ?? 'Desconocido') . '</td>';
+                                                echo '<td>' . htmlspecialchars($row['productos'] ?? 'Desconocido') . '</td>';
                                                 echo '<td>' . htmlspecialchars($row['cliente'] ?? 'General') . '</td>';
                                                 echo '<td><span class="badge bg-secondary">' . htmlspecialchars($row['pago'] ?? 'Efectivo') . '</span></td>';
                                                 echo '<td><span class="badge ' . $badgeClass . '">' . htmlspecialchars($estadoActual) . '</span></td>';
@@ -497,8 +573,8 @@ function cargarReporteVentas() {
 </script>
 <script>
 (() => {
-    const producto = document.getElementById('id_producto');
-    const cantidad = document.getElementById('cantidad');
+    const productosVenta = document.getElementById('ventaProductos');
+    const agregarProducto = document.getElementById('agregarProductoVenta');
     const metodoPago = document.getElementById('id_pago');
     const resumen = {
         subtotal: document.getElementById('ventaSubtotal'),
@@ -516,24 +592,72 @@ function cargarReporteVentas() {
     });
     const tarifaIva = 0.19;
 
-    function actualizarResumen() {
-        const opcion = producto.selectedOptions[0];
-        const precio = Number(opcion?.dataset.precio || 0);
-        const unidades = Math.max(0, Number.parseInt(cantidad.value, 10) || 0);
-        const subtotal = Math.round((precio * unidades + Number.EPSILON) * 100) / 100;
-        const iva = Math.round((subtotal * tarifaIva + Number.EPSILON) * 100) / 100;
-        const total = subtotal + iva;
+    function actualizarProductos() {
+        const filas = [...productosVenta.querySelectorAll('.venta-producto-row')];
+        const seleccionados = filas.map(fila => fila.querySelector('.venta-producto').value).filter(Boolean);
 
-        resumen.subtotal.textContent = formatoMoneda.format(subtotal);
+        filas.forEach(fila => {
+            const selector = fila.querySelector('.venta-producto');
+            const cantidad = fila.querySelector('.venta-cantidad');
+            const opcion = selector.selectedOptions[0];
+            const stock = Number(opcion?.dataset.stock || 0);
+            cantidad.max = stock > 0 ? stock : '';
+
+            [...selector.options].forEach(option => {
+                option.disabled = Boolean(option.value && option.value !== selector.value && seleccionados.includes(option.value));
+            });
+
+            let botonEliminar = fila.querySelector('.eliminar-producto-venta');
+            if (filas.length > 1 && !botonEliminar) {
+                const columna = document.createElement('div');
+                columna.className = 'col-auto eliminar-producto-col';
+                botonEliminar = document.createElement('button');
+                botonEliminar.type = 'button';
+                botonEliminar.className = 'btn btn-outline-danger';
+                botonEliminar.textContent = 'Quitar';
+                botonEliminar.setAttribute('aria-label', 'Quitar producto de la venta');
+                columna.appendChild(botonEliminar);
+                fila.appendChild(columna);
+                botonEliminar.addEventListener('click', () => {
+                    fila.remove();
+                    actualizarProductos();
+                    actualizarResumen();
+                });
+            } else if (filas.length === 1 && botonEliminar) {
+                botonEliminar.closest('.eliminar-producto-col').remove();
+            }
+        });
+
+        const totalProductos = productosVenta.querySelectorAll('.venta-producto-row:first-child .venta-producto option[value]').length;
+        agregarProducto.disabled = filas.length >= 20 || filas.length >= totalProductos;
+    }
+
+    function agregarFilaProducto() {
+        const fila = productosVenta.querySelector('.venta-producto-row').cloneNode(true);
+        fila.querySelector('.venta-producto').value = '';
+        fila.querySelector('.venta-cantidad').value = '1';
+        productosVenta.appendChild(fila);
+        actualizarProductos();
+        actualizarResumen();
+        fila.querySelector('.venta-producto').focus();
+    }
+
+    function actualizarResumen() {
+        const subtotal = [...productosVenta.querySelectorAll('.venta-producto-row')].reduce((total, fila) => {
+            const opcion = fila.querySelector('.venta-producto').selectedOptions[0];
+            const precio = Number(opcion?.dataset.precio || 0);
+            const unidades = Math.max(0, Number.parseInt(fila.querySelector('.venta-cantidad').value, 10) || 0);
+            return total + precio * unidades;
+        }, 0);
+        const subtotalRedondeado = Math.round((subtotal + Number.EPSILON) * 100) / 100;
+        const iva = Math.round((subtotalRedondeado * tarifaIva + Number.EPSILON) * 100) / 100;
+        const total = subtotalRedondeado + iva;
+
+        resumen.subtotal.textContent = formatoMoneda.format(subtotalRedondeado);
         resumen.iva.textContent = formatoMoneda.format(iva);
         resumen.total.textContent = formatoMoneda.format(total);
         resumen.tarjeta.textContent = formatoMoneda.format(total);
 
-        if (opcion?.dataset.stock) {
-            cantidad.max = opcion.dataset.stock;
-        } else {
-            cantidad.removeAttribute('max');
-        }
     }
 
     function actualizarMetodoPago() {
@@ -544,9 +668,20 @@ function cargarReporteVentas() {
         referenciaPago.required = requiereTarjeta;
     }
 
-    producto.addEventListener('change', actualizarResumen);
-    cantidad.addEventListener('input', actualizarResumen);
+    productosVenta.addEventListener('change', event => {
+        if (event.target.matches('.venta-producto')) {
+            actualizarProductos();
+            actualizarResumen();
+        }
+    });
+    productosVenta.addEventListener('input', event => {
+        if (event.target.matches('.venta-cantidad')) {
+            actualizarResumen();
+        }
+    });
+    agregarProducto.addEventListener('click', agregarFilaProducto);
     metodoPago.addEventListener('change', actualizarMetodoPago);
+    actualizarProductos();
     actualizarResumen();
     actualizarMetodoPago();
 })();

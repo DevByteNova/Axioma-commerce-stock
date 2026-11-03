@@ -30,11 +30,13 @@ class Factura
     public function detalle(int $idFactura): array
     {
         $stmt = $this->conn->prepare(
-            "SELECT p.nombre AS PRODUCTO, p.talla, v.cantidad, v.total,
-                    ROUND(v.total / NULLIF(v.cantidad, 0), 2) AS PRECIO_UNITARIO,
+            "SELECT p.nombre AS PRODUCTO, p.talla,
+                    COALESCE(dv.cantidad, v.cantidad) AS cantidad, v.total,
+                    COALESCE(dv.precio_unitario, ROUND(v.total / NULLIF(v.cantidad, 0), 2)) AS PRECIO_UNITARIO,
                     mp.nombre_metodo AS METODO_PAGO, ve.NOMBRE AS VENDEDOR
              FROM ventas v
-             INNER JOIN productos p ON p.ID_PRODUCTO = v.ID_PRODUCTO
+             LEFT JOIN detalle_venta dv ON dv.ID_VENTAS = v.ID_VENTAS
+             INNER JOIN productos p ON p.ID_PRODUCTO = COALESCE(dv.ID_PRODUCTO, v.ID_PRODUCTO)
              LEFT JOIN metodos_pago mp ON mp.ID_PAGO = v.ID_PAGO
              LEFT JOIN vendedor ve ON ve.ID_VENDEDOR = v.ID_VENDEDOR
              WHERE v.ID_FACTURA = ?

@@ -15,7 +15,7 @@ function assert_true(bool $condition, string $message): void
 $db = (new Database())->getConnection();
 assert_true($db instanceof PDO, 'la conexión PDO está disponible');
 
-$requiredTables = ['usuarios', 'clientes', 'productos', 'ventas', 'metodos_pago'];
+$requiredTables = ['usuarios', 'clientes', 'productos', 'ventas', 'detalle_venta', 'metodos_pago'];
 $tables = $db->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
 foreach ($requiredTables as $table) {
     assert_true(in_array($table, $tables, true), "existe la tabla {$table}");
@@ -32,6 +32,10 @@ assert_true((int) $stmt->fetchColumn() >= 0, 'la consulta de stock crítico func
 $stmt = $db->query("SHOW COLUMNS FROM ventas LIKE 'estado_pedido'");
 assert_true((bool) $stmt->fetch(PDO::FETCH_ASSOC), 'ventas contiene el estado del pedido');
 
+$stmt = $db->query("SHOW COLUMNS FROM ventas LIKE 'ID_CLIENTE'");
+$clientColumn = $stmt->fetch(PDO::FETCH_ASSOC);
+assert_true($clientColumn && $clientColumn['Null'] === 'YES', 'ventas permite registrar un cliente no frecuente sin asociar un cliente');
+
 $stmt = $db->query("SELECT COUNT(*) FROM usuarios WHERE password_hash LIKE '\$2y$%'");
 assert_true((int) $stmt->fetchColumn() >= 0, 'la consulta de contraseñas cifradas funciona');
 
@@ -45,6 +49,8 @@ require __DIR__ . '/../frontend/src/pages/dashboard_vendedor.php';
 $html = ob_get_clean();
 assert_true(strpos($html, 'name="estado"') !== false, 'el dashboard del vendedor ofrece cambiar el estado de envío');
 assert_true(strpos($html, 'Guardar') !== false, 'el vendedor puede guardar el cambio del estado');
+assert_true(strpos($html, 'Stock crítico') !== false, 'el dashboard del vendedor muestra la sección de stock crítico');
+assert_true(strpos($html, 'cinco unidades o menos') !== false, 'el stock crítico del vendedor usa el límite de cinco unidades');
 
 $_SESSION = [
     'usuario_rol' => 'Cliente',

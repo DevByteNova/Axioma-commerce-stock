@@ -2,6 +2,7 @@
 session_start();
 
 require_once __DIR__ . '/../../../backend/src/conexion.php';
+require_once __DIR__ . '/../../../backend/src/models/DetalleVenta.php';
 
 try {
     $pdo = (new Database())->getConnection();
@@ -41,6 +42,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sqlVenta = "INSERT INTO ventas (ID_PRODUCTO, ID_VENDEDOR, cantidad, total, FECHA_VENTA) VALUES (?, ?, ?, ?, NOW())";
         $stmtVenta = $pdo->prepare($sqlVenta);
         $stmtVenta->execute([$id_producto, $id_vendedor, $cantidad, $total_venta]);
+        DetalleVenta::registrar(
+            $pdo,
+            (int) $pdo->lastInsertId(),
+            $id_producto,
+            $cantidad,
+            (float) $producto['PRECIO']
+        );
 
         // Descontar el stock del producto
         $sqlStock = "UPDATE productos SET STOCK = STOCK - ? WHERE ID_PRODUCTO = ?";
