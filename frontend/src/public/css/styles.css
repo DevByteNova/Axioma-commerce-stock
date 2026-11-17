@@ -692,6 +692,11 @@ select:focus-visible {
     transform: translateY(-1px);
 }
 
+.login-page .form-group button[type="submit"]:disabled {
+    cursor: wait;
+    opacity: .7;
+}
+
 .login-page .note {
     margin-top: 18px;
     padding-top: 16px;
@@ -751,6 +756,19 @@ select:focus-visible {
 }
 
 .login-page #errorMessage.show { display: block; }
+
+.login-page #formMessage {
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.login-page #formMessage.error {
+    color: var(--danger-color);
+}
+
+.login-page #formMessage.success {
+    color: var(--success-color);
+}
 
 @media (min-width: 1024px) {
     .login-page .right { display: block; }

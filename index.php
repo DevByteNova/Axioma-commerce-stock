@@ -109,7 +109,7 @@ if ($url === 'guardar_venta' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         exit('Error: una venta puede contener hasta 20 productos distintos.');
     }
 
-    if ($id_cliente > 0 && $id_pago > 0 && $id_vendedor > 0) {
+    if ($id_pago > 0 && $id_vendedor > 0) {
         try {
             ensureVentasEstadoPedidoColumn($pdo);
             ensureReferenciaPagoColumn($pdo);
@@ -309,6 +309,7 @@ $rolActual = $_SESSION['usuario_rol'] ?? '';
 // Definir qué roles tienen permiso para cada ruta (Añadido 'Cliente' a su respectivo dashboard)
 $rutasPermitidas = [
     'login'               => ['Invitado', 'Administrador', 'Vendedor', 'Cliente'],
+    'recuperar_contrasena'=> ['Invitado', 'Administrador', 'Vendedor', 'Cliente'],
     'catalogo'            => ['Invitado', 'Administrador', 'Vendedor', 'Cliente'],
     'error'               => ['Invitado', 'Administrador', 'Vendedor', 'Cliente'],
     'registro'            => ['Invitado', 'Administrador', 'Vendedor', 'Cliente'],
@@ -392,7 +393,7 @@ if (!array_key_exists($route, $rutasPermitidas)) {
 }
 
 // Validación 2: Si la ruta no es pública (login, registro, error o catálogo), exigir autenticación
-$rutasPublicas = ['login', 'registro', 'error', 'catalogo'];
+$rutasPublicas = ['login', 'recuperar_contrasena', 'registro', 'error', 'catalogo'];
 if (!in_array($route, $rutasPublicas, true) && !isset($_SESSION['usuario_id'])) {
     header('Location: index.php?url=login');
     exit;
@@ -417,6 +418,10 @@ if (!in_array($route, $rutasPublicas, true) && !in_array($rolActual, $rutasPermi
 switch ($route) {
     case 'login':
         require_once __DIR__ . '/frontend/src/pages/login.php';
+        break;
+
+    case 'recuperar_contrasena':
+        require_once __DIR__ . '/frontend/src/pages/recuperar_contrasena.php';
         break;
 
     case 'catalogo':

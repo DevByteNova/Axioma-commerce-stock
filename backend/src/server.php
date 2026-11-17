@@ -19,6 +19,65 @@ if (!is_array($data)) {
     $data = [];
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && in_array($data['action'] ?? '', ['solicitar_recuperacion', 'restablecer_contrasena'], true)) {
+    header('Cache-Control: no-store');
+
+    if (!verify_csrf_token($data['csrf_token'] ?? null)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'La solicitud venció. Actualiza la página e inténtalo de nuevo.']);
+        exit;
+    }
+
+    try {
+        require_once __DIR__ . '/controllers/PasswordResetController.php';
+        $database = new Database();
+        $db = $database->getConnection();
+        $passwordResetController = new PasswordResetController($db);
+
+        if ($data['action'] === 'solicitar_recuperacion') {
+            $email = is_string($data['email'] ?? null) ? $data['email'] : '';
+            $passwordResetController->solicitar($email);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Si el correo está asociado a una cuenta, recibirás instrucciones para recuperar tu contraseña.',
+            ]);
+            exit;
+        }
+
+        $password = is_string($data['password'] ?? null) ? $data['password'] : '';
+        $confirmPassword = is_string($data['confirm_password'] ?? null) ? $data['confirm_password'] : '';
+        if ($password !== $confirmPassword) {
+            echo json_encode(['success' => false, 'message' => 'Las contraseñas no coinciden.']);
+            exit;
+        }
+
+        if (strlen($password) < 8 || strlen($password) > 72) {
+            echo json_encode(['success' => false, 'message' => 'La contraseña debe tener entre 8 y 72 bytes.']);
+            exit;
+        }
+
+        $token = is_string($data['token'] ?? null) ? $data['token'] : '';
+        if ($passwordResetController->restablecer($token, $password)) {
+            echo json_encode(['success' => true, 'message' => 'Tu contraseña fue actualizada. Ya puedes iniciar sesión.']);
+            exit;
+        }
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'El enlace no es válido o venció. Solicita uno nuevo para continuar.',
+        ]);
+    } catch (Throwable $exception) {
+        error_log('Error en el módulo de recuperación de contraseña: ' . $exception->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'No fue posible procesar la solicitud. Inténtalo más tarde.',
+        ]);
+    }
+    exit;
+}
+
 // ==========================================
 // MÓDULO 1: LÓGICA DE AUTENTICACIÓN (LOGIN)
 // ==========================================

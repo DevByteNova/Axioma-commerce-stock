@@ -15,7 +15,7 @@ function assert_true(bool $condition, string $message): void
 $db = (new Database())->getConnection();
 assert_true($db instanceof PDO, 'la conexión PDO está disponible');
 
-$requiredTables = ['usuarios', 'clientes', 'productos', 'ventas', 'detalle_venta', 'metodos_pago'];
+$requiredTables = ['usuarios', 'clientes', 'productos', 'ventas', 'detalle_venta', 'metodos_pago', 'password_reset_tokens'];
 $tables = $db->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
 foreach ($requiredTables as $table) {
     assert_true(in_array($table, $tables, true), "existe la tabla {$table}");

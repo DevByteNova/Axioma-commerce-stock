@@ -45,7 +45,7 @@
                         </div>
                     </form>
 
-                    <div class="note">¿No tienes cuenta? <a href="index.php?url=registro">Regístrate</a> · <a href="index.php?url=catalogo">Ver el catálogo sin iniciar sesión</a></div>
+                    <div class="note"><a href="index.php?url=recuperar_contrasena">¿Olvidaste tu contraseña?</a><br><br>¿No tienes cuenta? <a href="index.php?url=registro">Regístrate</a> · <a href="index.php?url=catalogo">Ver el catálogo sin iniciar sesión</a></div>
                 </div>
             </div>
 

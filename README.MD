@@ -30,7 +30,7 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 	Copy-Item .env.example .env
 	```
 
-	Después completa `.env` con el servidor, usuario, contraseña y base de datos de MySQL. `.env` está ignorado por Git y no debe publicarse.
+	Después completa `.env` con el servidor, usuario, contraseña y base de datos de MySQL. Para recuperar contraseñas configura también `APP_URL` (URL pública de la aplicación) y los valores `SMTP_HOST`, `SMTP_PORT`, `SMTP_ENCRYPTION`, `SMTP_USERNAME`, `SMTP_PASSWORD` y `SMTP_FROM_EMAIL`. `.env` está ignorado por Git y no debe publicarse.
 4. Instala las dependencias si no existe `vendor/`:
 
 	```bash
@@ -50,6 +50,14 @@ Sistema web de comercio y gestión de inventario para la administración de prod
 	```
 
 7. Para producción, ejecuta `database/create_app_user.sql` con una contraseña segura y cambia `DB_USER` y `DB_PASSWORD` en `.env`.
+
+### Recuperar contraseña
+
+- En la pantalla de inicio de sesión, selecciona **¿Olvidaste tu contraseña?**. El sistema envía un enlace de un solo uso, válido por 30 minutos, al correo asociado a una cuenta activa.
+- En instalaciones existentes ejecuta `database/migracion_recuperacion_contrasena.sql` desde phpMyAdmin. La importación de `database/axioma_bd.sql` en una instalación nueva ya crea la tabla necesaria.
+- Configura las credenciales SMTP en `.env` para que se entreguen los correos. `APP_URL` debe apuntar a la carpeta base de la aplicación; por ejemplo `http://localhost/Axioma-commerce-stock`.
+- Las solicitudes están limitadas a una por cuenta cada minuto. El formulario no revela si el correo está registrado.
+- Después de ejecutar la migración, valida el flujo con `php tests/password_reset.php`.
 
 > El archivo SQL aparece como `axioma_bd`. En instalaciones Windows normalmente no hay diferencia entre mayúsculas y minúsculas, pero conviene usar el mismo nombre configurado en `conexion.php`.
 
